@@ -1,0 +1,14 @@
+appId: com.respondy.app
+productName: Respondy
+copyright: Copyright © Respondy
+directories:
+  output: dist
+  buildResources: resources
+files:
+  - from: .
+    filter:
+      - package.json
+      - app
+asarUnpack:
+  - "**/node_modules/tesseract.js/**"
+publish: null
