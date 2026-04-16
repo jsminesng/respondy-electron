@@ -1,61 +1,63 @@
-import { contextBridge, ipcRenderer, IpcRendererEvent } from 'electron'
+import { contextBridge, ipcRenderer, IpcRendererEvent } from "electron";
 import type {
   DisplayBounds,
   NotificationPayload,
   OcrSettings,
   RespondyApi,
   SentimentResult,
-} from '../shared/respondy-types'
+} from "../shared/respondy-types";
 
 const respondy: RespondyApi = {
   onNotification(callback: (payload: NotificationPayload) => void) {
-    const subscription = (_event: IpcRendererEvent, payload: NotificationPayload) =>
-      callback(payload)
-    ipcRenderer.on('notification-detected', subscription)
+    const subscription = (
+      _event: IpcRendererEvent,
+      payload: NotificationPayload,
+    ) => callback(payload);
+    ipcRenderer.on("notification-detected", subscription);
     return () => {
-      ipcRenderer.removeListener('notification-detected', subscription)
-    }
+      ipcRenderer.removeListener("notification-detected", subscription);
+    };
   },
   analyzeSentiment(text: string): Promise<SentimentResult> {
-    return ipcRenderer.invoke('analyze-sentiment', text)
+    return ipcRenderer.invoke("analyze-sentiment", text);
   },
   generateReplies(payload) {
-    return ipcRenderer.invoke('generate-replies', payload)
+    return ipcRenderer.invoke("generate-replies", payload);
   },
   hideOverlay() {
-    ipcRenderer.send('overlay:hide')
+    ipcRenderer.send("overlay:hide");
   },
   showOverlay() {
-    ipcRenderer.send('overlay:show')
+    ipcRenderer.send("overlay:show");
   },
   getOcrSettings(): Promise<OcrSettings> {
-    return ipcRenderer.invoke('ocr:get-settings')
+    return ipcRenderer.invoke("ocr:get-settings");
   },
   setOcrSettings(partial: Partial<OcrSettings>): Promise<void> {
-    return ipcRenderer.invoke('ocr:set-settings', partial)
+    return ipcRenderer.invoke("ocr:set-settings", partial);
   },
   getDisplayBounds(): Promise<DisplayBounds> {
-    return ipcRenderer.invoke('ocr:get-display-bounds')
+    return ipcRenderer.invoke("ocr:get-display-bounds");
   },
-}
+};
 
-contextBridge.exposeInMainWorld('respondy', respondy)
+contextBridge.exposeInMainWorld("respondy", respondy);
 
 const legacyIpc = {
   send(channel: string, value: unknown) {
-    ipcRenderer.send(channel, value)
+    ipcRenderer.send(channel, value);
   },
   on(channel: string, callback: (...args: unknown[]) => void) {
     const subscription = (_event: IpcRendererEvent, ...args: unknown[]) =>
-      callback(...args)
-    ipcRenderer.on(channel, subscription)
+      callback(...args);
+    ipcRenderer.on(channel, subscription);
     return () => {
-      ipcRenderer.removeListener(channel, subscription)
-    }
+      ipcRenderer.removeListener(channel, subscription);
+    };
   },
-}
+};
 
-contextBridge.exposeInMainWorld('ipc', legacyIpc)
+contextBridge.exposeInMainWorld("ipc", legacyIpc);
 
-export type { RespondyApi }
-export type IpcHandler = typeof legacyIpc
+export type { RespondyApi };
+export type IpcHandler = typeof legacyIpc;

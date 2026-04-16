@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useEffect, useMemo, useState } from 'react'
 import { supabase, supabaseConfigured } from '../lib/supabase'
 import { getRespondy } from '../lib/respondy-client'
+import { AuthPanel } from './AuthPanel'
 import { OcrSettingsPanel } from './OcrSettingsPanel'
 import type { NotificationPayload } from '../../shared/respondy-types'
 
@@ -160,6 +161,10 @@ export function Dashboard() {
             <p className="mt-2 text-xs text-slate-500">{s.hint}</p>
           </motion.div>
         ))}
+      </section>
+
+      <section className="rounded-3xl border border-white/5 bg-slate-900/60 p-6 backdrop-blur">
+        <AuthPanel />
       </section>
 
       <section className="rounded-3xl border border-white/5 bg-slate-900/60 p-6 backdrop-blur">

@@ -20,6 +20,28 @@ export type OcrSettings = {
   incomingOnly: boolean
 }
 
+export type AuthUser = {
+  id: number
+  username: string
+  email?: string | null
+}
+
+export type AuthState = {
+  isAuthenticated: boolean
+  user: AuthUser | null
+}
+
+export type LoginInput = {
+  username: string
+  password: string
+}
+
+export type SignupInput = {
+  username: string
+  email?: string
+  password: string
+}
+
 export type SentimentLabel = {
   label: string
   score: number
@@ -56,6 +78,10 @@ export type RespondyApi = {
   onNotification: (callback: (payload: NotificationPayload) => void) => () => void
   analyzeSentiment: (text: string) => Promise<SentimentResult>
   generateReplies: (payload: GenerateRepliesInput) => Promise<ReplySuggestion[]>
+  login: (payload: LoginInput) => Promise<AuthState>
+  signup: (payload: SignupInput) => Promise<AuthState>
+  logout: () => Promise<void>
+  getAuthState: () => Promise<AuthState>
   hideOverlay: () => void
   showOverlay: () => void
   getOcrSettings: () => Promise<OcrSettings>

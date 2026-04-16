@@ -8,7 +8,18 @@ import {
   analyzeSentimentKorean,
   generateReplySuggestions,
 } from './services/ai-service'
-import type { NotificationPayload, OcrSettings } from '../shared/respondy-types'
+import type {
+  LoginInput,
+  NotificationPayload,
+  OcrSettings,
+  SignupInput,
+} from '../shared/respondy-types'
+import {
+  getAuthState,
+  login,
+  logout,
+  signup,
+} from './services/auth-service'
 import { ocrSettingsStore } from './services/ocr-settings'
 import { startOcrLoop } from './services/ocr-loop'
 
@@ -129,6 +140,18 @@ function restartOcrLoop() {
       return generateReplySuggestions(payload)
     },
   )
+
+  ipcMain.handle('auth:get-state', () => getAuthState())
+
+  ipcMain.handle('auth:login', (_evt, payload: LoginInput) => {
+    return login(payload)
+  })
+
+  ipcMain.handle('auth:signup', (_evt, payload: SignupInput) => {
+    return signup(payload)
+  })
+
+  ipcMain.handle('auth:logout', () => logout())
 
   ipcMain.on('overlay:hide', () => {
     const ov = overlayWindow
