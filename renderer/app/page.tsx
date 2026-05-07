@@ -767,7 +767,11 @@ export default function HomePage() {
         <input className="respondy-input" defaultValue="abc@kookmin.ac.kr" />
         <label className="respondy-label">비밀번호</label>
         <input className="respondy-input" defaultValue="abc123!" type="password" />
-        <button className="respondy-primary-btn" type="button">
+        <button
+          className="respondy-primary-btn"
+          type="button"
+          onClick={() => window.alert('내 정보가 수정되었습니다.')}
+        >
           수정하기
         </button>
       </article>
