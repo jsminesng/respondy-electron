@@ -74,6 +74,14 @@ export default function HomePage() {
   const [authView, setAuthView] = useState<AuthView>('login')
   const [loggedIn, setLoggedIn] = useState(false)
   const [userName, setUserName] = useState('ABC')
+  const [profileEmail, setProfileEmail] = useState('abc@kookmin.ac.kr')
+  const [profilePassword, setProfilePassword] = useState('abc123!')
+  const [profileBirthDate, setProfileBirthDate] = useState('2001-01-01')
+  const [showProfileEditModal, setShowProfileEditModal] = useState(false)
+  const [editProfileName, setEditProfileName] = useState('')
+  const [editProfileEmail, setEditProfileEmail] = useState('')
+  const [editProfilePassword, setEditProfilePassword] = useState('')
+  const [editProfileBirthDate, setEditProfileBirthDate] = useState('')
   const [selectedView, setSelectedView] = useState<AppView>('realtime')
   const [selectedChatPerson, setSelectedChatPerson] = useState('')
   const [chatStep, setChatStep] = useState<ChatStep>('select')
@@ -351,6 +359,34 @@ export default function HomePage() {
     setNewPersonGoalRelation('')
     setNewPersonPersonality('')
     setNewPersonNotes('')
+  }
+
+  const openProfileEditModal = () => {
+    setEditProfileName(userName)
+    setEditProfileEmail(profileEmail)
+    setEditProfilePassword(profilePassword)
+    setEditProfileBirthDate(profileBirthDate)
+    setShowProfileEditModal(true)
+  }
+
+  const closeProfileEditModal = () => {
+    setShowProfileEditModal(false)
+    setEditProfileName('')
+    setEditProfileEmail('')
+    setEditProfilePassword('')
+    setEditProfileBirthDate('')
+  }
+
+  const saveProfile = () => {
+    const nextName = editProfileName.trim()
+    const nextEmail = editProfileEmail.trim()
+    const nextPassword = editProfilePassword.trim()
+    if (!nextName || !nextEmail || !nextPassword) return
+    setUserName(nextName)
+    setProfileEmail(nextEmail)
+    setProfilePassword(nextPassword)
+    setProfileBirthDate(editProfileBirthDate)
+    closeProfileEditModal()
   }
 
   const createPersonProfile = () => {
@@ -810,22 +846,29 @@ export default function HomePage() {
     <section className="respondy-three-column">
       <article className="respondy-card">
         <h3 className="respondy-title">내 정보</h3>
-        <label className="respondy-label">이름</label>
-        <input
-          className="respondy-input"
-          value={userName}
-          onChange={(event) => setUserName(event.target.value)}
-        />
-        <label className="respondy-label">이메일</label>
-        <input className="respondy-input" defaultValue="abc@kookmin.ac.kr" />
-        <label className="respondy-label">비밀번호</label>
-        <input className="respondy-input" defaultValue="abc123!" type="password" />
+        <div className="respondy-profile-head">
+          <div className="respondy-profile-avatar" aria-hidden>
+            {(userName.trim().slice(0, 1) || 'U').toUpperCase()}
+          </div>
+          <div className="respondy-profile-identity">
+            <p className="respondy-profile-name">{userName || '이름 미입력'}</p>
+            <p className="respondy-profile-email">{profileEmail || '이메일 미입력'}</p>
+          </div>
+        </div>
+        <dl className="respondy-profile-meta">
+          <dt>이름</dt>
+          <dd>{userName || '—'}</dd>
+          <dt>이메일</dt>
+          <dd>{profileEmail || '—'}</dd>
+          <dt>생년월일</dt>
+          <dd>{profileBirthDate || '—'}</dd>
+        </dl>
         <button
           className="respondy-primary-btn"
           type="button"
-          onClick={() => window.alert('내 정보가 수정되었습니다.')}
+          onClick={openProfileEditModal}
         >
-          수정하기
+          프로필 수정
         </button>
       </article>
 
@@ -957,6 +1000,110 @@ export default function HomePage() {
       </header>
 
       <main className="respondy-main">{renderMainContent()}</main>
+
+      {loggedIn && showProfileEditModal && (
+        <div className="respondy-modal-backdrop" role="presentation" onClick={closeProfileEditModal}>
+          <div
+            className="respondy-modal respondy-person-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="profile-edit-modal-title"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="respondy-modal-head">
+              <div className="respondy-modal-head-text">
+                <p className="respondy-modal-eyebrow">프로필 수정</p>
+                <h2 id="profile-edit-modal-title" className="respondy-modal-title">
+                  내 정보 편집
+                </h2>
+              </div>
+              <button
+                type="button"
+                className="respondy-modal-close"
+                onClick={closeProfileEditModal}
+                aria-label="닫기"
+              >
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden>
+                  <path
+                    d="M18 6L6 18M6 6l12 12"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                  />
+                </svg>
+              </button>
+            </div>
+            <div className="respondy-modal-body">
+              <div className="respondy-person-form-grid">
+                <label className="respondy-label" htmlFor="profile-name">
+                  이름
+                </label>
+                <input
+                  id="profile-name"
+                  className="respondy-input"
+                  value={editProfileName}
+                  onChange={(e) => setEditProfileName(e.target.value)}
+                  placeholder="이름을 입력하세요"
+                  autoComplete="name"
+                />
+                <label className="respondy-label" htmlFor="profile-email">
+                  이메일
+                </label>
+                <input
+                  id="profile-email"
+                  className="respondy-input"
+                  type="email"
+                  value={editProfileEmail}
+                  onChange={(e) => setEditProfileEmail(e.target.value)}
+                  placeholder="이메일을 입력하세요"
+                  autoComplete="email"
+                />
+                <label className="respondy-label" htmlFor="profile-password">
+                  비밀번호 설정
+                </label>
+                <input
+                  id="profile-password"
+                  className="respondy-input"
+                  type="password"
+                  value={editProfilePassword}
+                  onChange={(e) => setEditProfilePassword(e.target.value)}
+                  placeholder="비밀번호를 입력하세요"
+                  autoComplete="new-password"
+                />
+                <label className="respondy-label" htmlFor="profile-birthdate">
+                  생년월일
+                </label>
+                <input
+                  id="profile-birthdate"
+                  type="date"
+                  className="respondy-input"
+                  value={editProfileBirthDate}
+                  onChange={(e) => setEditProfileBirthDate(e.target.value)}
+                />
+              </div>
+              <div className="respondy-modal-actions">
+                <button
+                  type="button"
+                  className="respondy-modal-secondary-btn"
+                  onClick={closeProfileEditModal}
+                >
+                  취소
+                </button>
+                <button
+                  type="button"
+                  className="respondy-primary-btn respondy-modal-primary-btn"
+                  onClick={saveProfile}
+                  disabled={
+                    !editProfileName.trim() || !editProfileEmail.trim() || !editProfilePassword.trim()
+                  }
+                >
+                  저장하기
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {loggedIn && showPersonCreateModal && (
         <div className="respondy-modal-backdrop" role="presentation" onClick={closePersonCreateModal}>

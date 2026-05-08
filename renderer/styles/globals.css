@@ -447,6 +447,39 @@
     @apply block whitespace-normal text-base font-bold leading-snug text-white sm:text-lg;
   }
 
+  .respondy-profile-head {
+    @apply mb-4 flex items-center gap-3 rounded-xl border border-white/10 bg-black/25 px-4 py-3.5;
+  }
+
+  .respondy-profile-avatar {
+    @apply flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#7b61ff] text-lg font-extrabold text-white;
+  }
+
+  .respondy-profile-identity {
+    @apply min-w-0;
+  }
+
+  .respondy-profile-name {
+    @apply truncate text-xl font-bold tracking-tight text-white;
+  }
+
+  .respondy-profile-email {
+    @apply truncate text-sm font-medium text-white/75;
+  }
+
+  .respondy-profile-meta {
+    @apply rounded-xl border border-white/10 bg-white/10 px-4 py-3.5;
+    @apply grid gap-x-3 gap-y-2.5 text-sm sm:grid-cols-[5.5rem_1fr];
+  }
+
+  .respondy-profile-meta dt {
+    @apply font-semibold text-white/60;
+  }
+
+  .respondy-profile-meta dd {
+    @apply break-all font-medium text-white/95;
+  }
+
   .respondy-person-list {
     @apply flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto pr-0.5;
   }
