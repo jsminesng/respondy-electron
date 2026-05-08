@@ -310,6 +310,8 @@ export default function HomePage() {
 
   const manualFormReady =
     selectedManualPerson.trim() && manualSituation.trim() && manualReceivedMessage.trim()
+  const selectedRealtimeProfile = personProfiles.find((person) => person.name === selectedRealtimePerson)
+  const selectedManualProfile = personProfiles.find((person) => person.name === selectedManualPerson)
 
   const selectedChatProfile = personProfiles.find((person) => person.name === selectedChatPerson)
   const chatRelationLabel = selectedChatPerson.trim() || '인물 미선택'
@@ -561,8 +563,8 @@ export default function HomePage() {
                 at: Date.now(),
                 source: 'realtime',
                 title: `${selectedRealtimePerson.trim()}와의 실시간 대화`,
-                relation: selectedRealtimePerson.trim(),
-                goalRelation: '대화 유지',
+                relation: selectedRealtimeProfile?.currentRelation?.trim() || '—',
+                goalRelation: selectedRealtimeProfile?.goalRelation?.trim() || '—',
                 situation: realtimeReceivedMessage.trim(),
                 receivedMessage: realtimeReceivedMessage.trim(),
                 emotion: REALTIME_RESULT.emotion,
@@ -583,14 +585,14 @@ export default function HomePage() {
         <h3 className="respondy-card-title">AI 분석 결과</h3>
         <label className="respondy-label">감정 분석</label>
         <textarea
-          className="respondy-textarea respondy-readonly-area respondy-output-area"
+          className={`respondy-textarea respondy-readonly-area respondy-output-area ${showRealtimeResults ? '' : 'respondy-output-pending'}`}
           readOnly
           value={showRealtimeResults ? REALTIME_RESULT.emotion : ''}
           placeholder="왼쪽 패널을 모두 입력한 뒤 실시간 감지 시작을 누르면 표시됩니다"
         />
         <label className="respondy-label">맥락 해석</label>
         <textarea
-          className="respondy-textarea respondy-readonly-area respondy-output-area"
+          className={`respondy-textarea respondy-readonly-area respondy-output-area ${showRealtimeResults ? '' : 'respondy-output-pending'}`}
           readOnly
           value={showRealtimeResults ? REALTIME_RESULT.context : ''}
           placeholder="왼쪽 패널을 모두 입력한 뒤 실시간 감지 시작을 누르면 표시됩니다"
@@ -695,8 +697,8 @@ export default function HomePage() {
                 at: Date.now(),
                 source: 'manual',
                 title: `${selectedManualPerson.trim()}와의 수동 입력 대화`,
-                relation: selectedManualPerson.trim(),
-                goalRelation: '대화 유지',
+                relation: selectedManualProfile?.currentRelation?.trim() || '—',
+                goalRelation: selectedManualProfile?.goalRelation?.trim() || '—',
                 situation: manualSituation.trim(),
                 receivedMessage: manualReceivedMessage.trim(),
                 emotion: MANUAL_RESULT.emotion,
@@ -716,14 +718,14 @@ export default function HomePage() {
         <h3 className="respondy-card-title">AI 분석 결과</h3>
         <label className="respondy-label">감정 분석</label>
         <textarea
-          className="respondy-textarea respondy-readonly-area respondy-output-area"
+          className={`respondy-textarea respondy-readonly-area respondy-output-area ${showManualResults ? '' : 'respondy-output-pending'}`}
           readOnly
           value={showManualResults ? MANUAL_RESULT.emotion : ''}
           placeholder="왼쪽 패널을 모두 입력한 뒤 AI 분석 시작을 누르면 표시됩니다"
         />
         <label className="respondy-label">맥락 해석</label>
         <textarea
-          className="respondy-textarea respondy-readonly-area respondy-output-area"
+          className={`respondy-textarea respondy-readonly-area respondy-output-area ${showManualResults ? '' : 'respondy-output-pending'}`}
           readOnly
           value={showManualResults ? MANUAL_RESULT.context : ''}
           placeholder="왼쪽 패널을 모두 입력한 뒤 AI 분석 시작을 누르면 표시됩니다"
@@ -1067,6 +1069,23 @@ export default function HomePage() {
   const historyDetail = historyDetailId
     ? analysisHistory.find((r) => r.id === historyDetailId)
     : undefined
+  const historyPersonFromTitle = historyDetail?.title
+    ? personProfiles.find((person) => historyDetail.title.includes(person.name))
+    : undefined
+  const historyRelationDisplay =
+    historyDetail &&
+    (historyDetail.relation === historyPersonFromTitle?.name ||
+      historyDetail.relation === '—' ||
+      !historyDetail.relation.trim())
+      ? historyPersonFromTitle?.currentRelation || '—'
+      : historyDetail?.relation || '—'
+  const historyGoalRelationDisplay =
+    historyDetail &&
+    (historyDetail.goalRelation === '대화 유지' ||
+      historyDetail.goalRelation === '—' ||
+      !historyDetail.goalRelation.trim())
+      ? historyPersonFromTitle?.goalRelation || '—'
+      : historyDetail?.goalRelation || '—'
   const personDetail = personDetailId
     ? personProfiles.find((person) => person.id === personDetailId)
     : undefined
@@ -1511,9 +1530,9 @@ export default function HomePage() {
                   <dt>제목</dt>
                   <dd>{historyDetail.title || '—'}</dd>
                   <dt>상대방과의 관계</dt>
-                  <dd>{historyDetail.relation || '—'}</dd>
+                  <dd>{historyRelationDisplay}</dd>
                   <dt>목표 관계</dt>
-                  <dd>{historyDetail.goalRelation || '—'}</dd>
+                  <dd>{historyGoalRelationDisplay}</dd>
                   <dt>상황 설명</dt>
                   <dd className="respondy-modal-pre">{historyDetail.situation || '—'}</dd>
                   {historyDetail.source === 'manual' && (
