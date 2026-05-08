@@ -141,7 +141,8 @@
   }
 
   .respondy-add-btn {
-    @apply flex h-11 w-11 shrink-0 items-center justify-center rounded-full border-none bg-[#4338ca] text-2xl font-semibold leading-none text-white transition-colors hover:bg-[#4f46e5] sm:h-12 sm:w-12;
+    @apply flex h-11 w-11 shrink-0 items-center justify-center border-none bg-[#4338ca] text-2xl font-semibold leading-none text-white transition-colors hover:bg-[#4f46e5] sm:h-12 sm:w-12;
+    border-radius: 0.75rem !important;
   }
 
   .respondy-textarea {
