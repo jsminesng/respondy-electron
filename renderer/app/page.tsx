@@ -901,7 +901,7 @@ export default function HomePage() {
   }
 
   const renderMyPage = () => (
-    <section className="respondy-three-column">
+    <section className="respondy-three-column respondy-mypage-grid">
       <article className="respondy-card">
         <h3 className="respondy-title">내 정보</h3>
         <div className="respondy-profile-head">
@@ -938,33 +938,35 @@ export default function HomePage() {
         {analysisHistory.length === 0 ? (
           <p className="respondy-output-empty respondy-history-empty">아직 저장된 분석 기록이 없습니다.</p>
         ) : (
-          analysisHistory.map((rec) => (
-            <button
-              key={rec.id}
-              type="button"
-              className="respondy-history-item respondy-history-item--button"
-              onClick={() => setHistoryDetailId(rec.id)}
-            >
-              <div className="respondy-history-item-top">
-                <time className="respondy-history-item-date" dateTime={new Date(rec.at).toISOString()}>
-                  {new Date(rec.at).toLocaleString('ko-KR', {
-                    year: 'numeric',
-                    month: '2-digit',
-                    day: '2-digit',
-                    hour: '2-digit',
-                    minute: '2-digit',
-                  })}
-                </time>
-                <span
-                  className={`respondy-history-item-badge ${rec.source === 'realtime' ? 'is-realtime' : 'is-manual'}`}
-                >
-                  {rec.source === 'realtime' ? '실시간 분석' : '수동 입력'}
-                </span>
-              </div>
-              <div className="respondy-history-item-divider" aria-hidden />
-              <span className="respondy-history-item-title">{rec.title || '(제목 없음)'}</span>
-            </button>
-          ))
+          <div className="respondy-history-list">
+            {analysisHistory.map((rec) => (
+              <button
+                key={rec.id}
+                type="button"
+                className="respondy-history-item respondy-history-item--button"
+                onClick={() => setHistoryDetailId(rec.id)}
+              >
+                <div className="respondy-history-item-top">
+                  <time className="respondy-history-item-date" dateTime={new Date(rec.at).toISOString()}>
+                    {new Date(rec.at).toLocaleString('ko-KR', {
+                      year: 'numeric',
+                      month: '2-digit',
+                      day: '2-digit',
+                      hour: '2-digit',
+                      minute: '2-digit',
+                    })}
+                  </time>
+                  <span
+                    className={`respondy-history-item-badge ${rec.source === 'realtime' ? 'is-realtime' : 'is-manual'}`}
+                  >
+                    {rec.source === 'realtime' ? '실시간 분석' : '수동 입력'}
+                  </span>
+                </div>
+                <div className="respondy-history-item-divider" aria-hidden />
+                <span className="respondy-history-item-title">{rec.title || '(제목 없음)'}</span>
+              </button>
+            ))}
+          </div>
         )}
       </article>
       <article className="respondy-card">

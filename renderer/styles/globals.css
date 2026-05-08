@@ -403,6 +403,18 @@
     @apply mb-4 last:mb-0;
   }
 
+  .respondy-mypage-grid {
+    @apply items-stretch;
+  }
+
+  .respondy-mypage-grid .respondy-card {
+    @apply min-h-0 lg:h-[min(72dvh,46rem)] lg:overflow-hidden;
+  }
+
+  .respondy-history-list {
+    @apply min-h-0 flex-1 overflow-y-auto pr-0.5;
+  }
+
   .respondy-history-hint {
     @apply mb-4 text-sm leading-relaxed text-white/55;
   }
