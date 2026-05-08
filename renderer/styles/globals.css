@@ -488,8 +488,16 @@
     @apply rounded-xl border border-white/10 bg-white/10 px-4 py-4;
   }
 
+  .respondy-person-item-btn {
+    @apply mb-0;
+  }
+
   .respondy-person-name {
-    @apply mb-3 text-lg font-bold text-white;
+    @apply text-lg font-bold text-white;
+  }
+
+  .respondy-person-item-summary {
+    @apply block text-sm font-medium text-white/75;
   }
 
   .respondy-person-meta {
