@@ -4,7 +4,6 @@ import { useEffect, useRef, useState } from 'react'
 
 type AuthView = 'login' | 'signup'
 type AppView = 'realtime' | 'manual' | 'chat' | 'mypage'
-type Relation = '가족' | '친구' | '연인' | '썸' | '동료' | '직접 입력'
 type ChatStep = 'select' | 'conversation'
 type ChatRole = 'user' | 'assistant'
 type ChatBubble = { id: string; role: ChatRole; text: string; at: number }
@@ -42,17 +41,6 @@ const navItems: { key: AppView; label: string }[] = [
   { key: 'mypage', label: '마이페이지' },
 ]
 
-const relationChoices: Relation[] = ['가족', '친구', '연인', '썸', '동료', '직접 입력']
-
-const CHAT_OPENING: Record<Relation, string> = {
-  가족: '오늘 하루는 어땠어? 궁금해서 물어봤어.',
-  친구: '야~ 뭐 해? 심심한데 잠깐 얘기할래?',
-  연인: '보고 싶었어. 오늘은 좀 어땠어?',
-  썸: '저번에 얘기했던 거 기억나? 어떻게 됐어?',
-  동료: '혹시 지금 잠깐 시간 괜찮아? 짧게만 여쭤볼 게 있어.',
-  '직접 입력': '편하게 시작해봐. 어떤 상황을 연습하고 싶어?',
-}
-
 const CHAT_DEMO_REPLIES = [
   '응, 그렇구나. 그다음엔 어떻게 했어?',
   '아하, 나도 비슷한 적 있어 ㅎㅎ 너는 보통 어떻게 말해?',
@@ -87,8 +75,7 @@ export default function HomePage() {
   const [loggedIn, setLoggedIn] = useState(false)
   const [userName, setUserName] = useState('ABC')
   const [selectedView, setSelectedView] = useState<AppView>('realtime')
-  const [selectedRelation, setSelectedRelation] = useState<Relation>('친구')
-  const [chatCustomRelation, setChatCustomRelation] = useState('')
+  const [selectedChatPerson, setSelectedChatPerson] = useState('')
   const [chatStep, setChatStep] = useState<ChatStep>('select')
   const [chatMessages, setChatMessages] = useState<ChatBubble[]>([])
   const [chatDraft, setChatDraft] = useState('')
@@ -131,7 +118,6 @@ export default function HomePage() {
       setChatMessages([])
       setChatDraft('')
       setChatTyping(false)
-      setChatCustomRelation('')
       demoReplyIdxRef.current = 0
     }
   }, [selectedView])
@@ -173,6 +159,7 @@ export default function HomePage() {
     setRealtimeReceivedMessage('')
     setPersonProfiles([])
     setSelectedRealtimePerson('')
+    setSelectedChatPerson('')
     setShowPersonCreateModal(false)
     setNewPersonName('')
     setNewPersonBirthDate('')
@@ -308,18 +295,16 @@ export default function HomePage() {
   const manualFormReady =
     selectedManualPerson.trim() && manualSituation.trim() && manualReceivedMessage.trim()
 
-  const chatRelationLabel =
-    selectedRelation === '직접 입력'
-      ? chatCustomRelation.trim() || '직접 입력'
-      : selectedRelation
+  const selectedChatProfile = personProfiles.find((person) => person.name === selectedChatPerson)
+  const chatRelationLabel = selectedChatPerson.trim() || '인물 미선택'
 
   const startChatSession = () => {
-    if (selectedRelation === '직접 입력' && !chatCustomRelation.trim()) return
+    if (!selectedChatPerson.trim()) return
     demoReplyIdxRef.current = 0
-    const openingText =
-      selectedRelation === '직접 입력' && chatCustomRelation.trim()
-        ? `「${chatCustomRelation.trim()}」 관계로 연습하는구나. 편하게 말해줘!`
-        : CHAT_OPENING[selectedRelation]
+    const relationHint = selectedChatProfile?.currentRelation
+      ? `${selectedChatProfile.currentRelation} 관계로 `
+      : ''
+    const openingText = `${selectedChatPerson.trim()}님과 ${relationHint}대화를 연습해보자. 편하게 시작해줘!`
     setChatStep('conversation')
     setChatMessages([
       {
@@ -374,6 +359,8 @@ export default function HomePage() {
     const existingPerson = personProfiles.find((person) => person.name === personName)
     if (existingPerson) {
       setSelectedRealtimePerson(existingPerson.name)
+      setSelectedManualPerson(existingPerson.name)
+      setSelectedChatPerson(existingPerson.name)
       closePersonCreateModal()
       return
     }
@@ -391,6 +378,8 @@ export default function HomePage() {
       },
     ])
     setSelectedRealtimePerson(personName)
+    setSelectedManualPerson(personName)
+    setSelectedChatPerson(personName)
     closePersonCreateModal()
     clearRealtimeResults()
   }
@@ -661,43 +650,41 @@ export default function HomePage() {
         <section className="respondy-single-wrap">
           <article className="respondy-card respondy-chat-select-card">
             <h2 className="respondy-title respondy-title--card">AI 대화 연습</h2>
-            <p className="respondy-section-label">관계 선택</p>
-            <div className="respondy-grid">
-              {relationChoices.map((relation) => (
-                <button
-                  key={relation}
-                  type="button"
-                  className={`respondy-choice-btn ${selectedRelation === relation ? 'is-active' : ''}`}
-                  onClick={() => {
-                    setSelectedRelation(relation)
-                    if (relation !== '직접 입력') setChatCustomRelation('')
-                  }}
-                >
-                  {relation}
-                </button>
-              ))}
+            <p className="respondy-section-label">인물 선택</p>
+            <div className="respondy-inline-row">
+              <select
+                id="chat-person-select"
+                className="respondy-input respondy-select"
+                value={selectedChatPerson}
+                onChange={(e) => setSelectedChatPerson(e.target.value)}
+              >
+                <option value="">인물을 선택하세요</option>
+                {personProfiles.map((person) => (
+                  <option key={person.id} value={person.name}>
+                    {person.name}
+                  </option>
+                ))}
+              </select>
+              <button
+                type="button"
+                className="respondy-add-btn"
+                onClick={() => setShowPersonCreateModal(true)}
+                aria-label="인물 생성"
+                title="인물 생성"
+              >
+                +
+              </button>
             </div>
-            {selectedRelation === '직접 입력' && (
-              <div className="respondy-chat-custom-panel">
-                <label className="respondy-chat-custom-label" htmlFor="chat-custom-relation">
-                  관계 직접 입력
-                </label>
-                <textarea
-                  id="chat-custom-relation"
-                  className="respondy-chat-custom-textarea"
-                  value={chatCustomRelation}
-                  onChange={(e) => setChatCustomRelation(e.target.value)}
-                  placeholder="예: 옆집 이웃, 소개팅 상대, 멘토·멘티, 전 연인…"
-                  rows={3}
-                />
-                <p className="respondy-chat-custom-hint">원하는 관계를 자유롭게 적어 주세요.</p>
-              </div>
+            {personProfiles.length === 0 && (
+              <p className="respondy-helper-text respondy-helper-text--inline">
+                등록된 인물이 없습니다. <strong>+</strong> 버튼으로 인물을 먼저 만들어 주세요.
+              </p>
             )}
             <button
               className="respondy-primary-btn"
               type="button"
               onClick={startChatSession}
-              disabled={selectedRelation === '직접 입력' && !chatCustomRelation.trim()}
+              disabled={!selectedChatPerson.trim()}
             >
               대화 시작하기
             </button>
@@ -715,7 +702,7 @@ export default function HomePage() {
                 type="button"
                 className="respondy-chat-back-btn"
                 onClick={leaveChatConversation}
-                aria-label="관계 선택으로 돌아가기"
+                aria-label="인물 선택으로 돌아가기"
               >
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden>
                   <path
