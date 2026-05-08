@@ -132,6 +132,18 @@
     @apply h-11 sm:h-12;
   }
 
+  .respondy-select {
+    @apply pr-10;
+  }
+
+  .respondy-inline-row {
+    @apply flex items-center gap-2;
+  }
+
+  .respondy-add-btn {
+    @apply flex h-11 w-11 shrink-0 items-center justify-center rounded-full border-none bg-[#4338ca] text-2xl font-semibold leading-none text-white transition-colors hover:bg-[#4f46e5] sm:h-12 sm:w-12;
+  }
+
   .respondy-textarea {
     @apply min-h-[100px] resize-none leading-snug sm:min-h-[120px];
   }
@@ -156,12 +168,32 @@
     @apply mt-4 h-11 w-full cursor-pointer rounded-full border-none bg-[#4338ca] text-base font-semibold text-white transition-colors hover:bg-[#4f46e5] disabled:cursor-not-allowed disabled:opacity-45 disabled:hover:bg-[#4338ca] sm:mt-5 sm:h-12 sm:text-lg;
   }
 
+  .respondy-danger-btn {
+    background-color: #dc2626 !important;
+  }
+
+  .respondy-danger-btn:hover {
+    background-color: #ef4444 !important;
+  }
+
+  .respondy-danger-btn:disabled:hover {
+    background-color: #dc2626 !important;
+  }
+
+  .respondy-primary-btn--inline {
+    @apply mt-0 w-auto min-w-[88px] px-4 sm:mt-0 sm:min-w-[96px];
+  }
+
   .respondy-helper-text {
     @apply mt-6 text-center text-sm font-medium text-white sm:text-base;
   }
 
   .respondy-helper-text--compact {
     @apply mt-5;
+  }
+
+  .respondy-helper-text--inline {
+    @apply mt-2 text-left text-xs text-white/85 sm:text-sm;
   }
 
   .respondy-link-btn {
@@ -415,6 +447,30 @@
     @apply block whitespace-normal text-base font-bold leading-snug text-white sm:text-lg;
   }
 
+  .respondy-person-list {
+    @apply flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto pr-0.5;
+  }
+
+  .respondy-person-item {
+    @apply rounded-xl border border-white/10 bg-white/10 px-4 py-4;
+  }
+
+  .respondy-person-name {
+    @apply mb-3 text-lg font-bold text-white;
+  }
+
+  .respondy-person-meta {
+    @apply grid gap-x-3 gap-y-2 text-sm sm:grid-cols-[6.2rem_1fr];
+  }
+
+  .respondy-person-meta dt {
+    @apply font-semibold text-white/55;
+  }
+
+  .respondy-person-meta dd {
+    @apply text-white/90;
+  }
+
   .respondy-modal-backdrop {
     @apply fixed inset-0 z-[200] flex items-center justify-center bg-black/65 p-4 backdrop-blur-[6px];
     animation: respondy-modal-in 0.22s ease-out;
@@ -434,6 +490,10 @@
     @apply border border-white/12 bg-gradient-to-b from-[#221c38] via-[#1a1528] to-[#141020];
     @apply shadow-[0_0_0_1px_rgba(123,97,255,0.12),0_25px_80px_-20px_rgba(0,0,0,0.75),0_0_60px_-15px_rgba(123,97,255,0.25)];
     animation: respondy-modal-pop 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  .respondy-person-modal {
+    @apply max-h-[min(92dvh,52rem)] max-w-xl;
   }
 
   @keyframes respondy-modal-pop {
@@ -547,6 +607,22 @@
 
   .respondy-modal-suggestion-text {
     @apply min-w-0 flex-1 pt-0.5;
+  }
+
+  .respondy-person-form-grid {
+    @apply space-y-1;
+  }
+
+  .respondy-modal-actions {
+    @apply mt-4 flex items-center justify-end gap-2 sm:mt-5;
+  }
+
+  .respondy-modal-secondary-btn {
+    @apply h-11 cursor-pointer rounded-full border border-white/20 bg-transparent px-4 text-sm font-semibold text-white transition-colors hover:bg-white/10 sm:h-12 sm:px-5 sm:text-base;
+  }
+
+  .respondy-modal-primary-btn {
+    @apply mt-0 w-auto min-w-[110px] px-4 sm:mt-0 sm:min-w-[120px] sm:px-5;
   }
 }
 

@@ -10,6 +10,16 @@ type ChatRole = 'user' | 'assistant'
 type ChatBubble = { id: string; role: ChatRole; text: string; at: number }
 
 type AnalysisSource = 'realtime' | 'manual'
+type PersonProfile = {
+  id: string
+  name: string
+  birthDate: string
+  currentRelation: string
+  goalRelation: string
+  personality: string
+  notes: string
+  createdAt: number
+}
 
 type AnalysisRecord = {
   id: string
@@ -85,17 +95,22 @@ export default function HomePage() {
   const [chatTyping, setChatTyping] = useState(false)
   const chatScrollRef = useRef<HTMLDivElement>(null)
   const demoReplyIdxRef = useRef(0)
-  const [realtimeTitle, setRealtimeTitle] = useState('')
-  const [realtimeRelation, setRealtimeRelation] = useState('')
-  const [realtimeGoalRelation, setRealtimeGoalRelation] = useState('')
-  const [realtimeSituation, setRealtimeSituation] = useState('')
-  const [manualTitle, setManualTitle] = useState('')
-  const [manualRelation, setManualRelation] = useState('')
-  const [manualGoalRelation, setManualGoalRelation] = useState('')
+  const [realtimeReceivedMessage, setRealtimeReceivedMessage] = useState('')
+  const [personProfiles, setPersonProfiles] = useState<PersonProfile[]>([])
+  const [selectedRealtimePerson, setSelectedRealtimePerson] = useState('')
+  const [showPersonCreateModal, setShowPersonCreateModal] = useState(false)
+  const [newPersonName, setNewPersonName] = useState('')
+  const [newPersonBirthDate, setNewPersonBirthDate] = useState('')
+  const [newPersonCurrentRelation, setNewPersonCurrentRelation] = useState('')
+  const [newPersonGoalRelation, setNewPersonGoalRelation] = useState('')
+  const [newPersonPersonality, setNewPersonPersonality] = useState('')
+  const [newPersonNotes, setNewPersonNotes] = useState('')
+  const [selectedManualPerson, setSelectedManualPerson] = useState('')
   const [manualSituation, setManualSituation] = useState('')
   const [manualReceivedMessage, setManualReceivedMessage] = useState('')
   const [showRealtimeResults, setShowRealtimeResults] = useState(false)
   const [showManualResults, setShowManualResults] = useState(false)
+  const [isRealtimeMonitoring, setIsRealtimeMonitoring] = useState(false)
   const [analysisHistory, setAnalysisHistory] = useState<AnalysisRecord[]>([])
   const [historyDetailId, setHistoryDetailId] = useState<string | null>(null)
   const [copiedSuggestionId, setCopiedSuggestionId] = useState<string | null>(null)
@@ -128,7 +143,10 @@ export default function HomePage() {
   }, [chatMessages, chatTyping, chatStep])
 
   useEffect(() => {
-    if (selectedView !== 'realtime') setShowRealtimeResults(false)
+    if (selectedView !== 'realtime') {
+      setShowRealtimeResults(false)
+      setIsRealtimeMonitoring(false)
+    }
   }, [selectedView])
 
   useEffect(() => {
@@ -152,14 +170,19 @@ export default function HomePage() {
     if (opts?.displayName?.trim()) {
       setUserName(opts.displayName.trim())
     }
-    setRealtimeTitle('')
-    setRealtimeRelation('')
-    setRealtimeGoalRelation('')
-    setRealtimeSituation('')
+    setRealtimeReceivedMessage('')
+    setPersonProfiles([])
+    setSelectedRealtimePerson('')
+    setShowPersonCreateModal(false)
+    setNewPersonName('')
+    setNewPersonBirthDate('')
+    setNewPersonCurrentRelation('')
+    setNewPersonGoalRelation('')
+    setNewPersonPersonality('')
+    setNewPersonNotes('')
     setShowRealtimeResults(false)
-    setManualTitle('')
-    setManualRelation('')
-    setManualGoalRelation('')
+    setIsRealtimeMonitoring(false)
+    setSelectedManualPerson('')
     setManualSituation('')
     setManualReceivedMessage('')
     setShowManualResults(false)
@@ -280,17 +303,10 @@ export default function HomePage() {
   const clearManualResults = () => setShowManualResults(false)
 
   const realtimeFormReady =
-    realtimeTitle.trim() &&
-    realtimeRelation.trim() &&
-    realtimeGoalRelation.trim() &&
-    realtimeSituation.trim()
+    selectedRealtimePerson.trim() && realtimeReceivedMessage.trim()
 
   const manualFormReady =
-    manualTitle.trim() &&
-    manualRelation.trim() &&
-    manualGoalRelation.trim() &&
-    manualSituation.trim() &&
-    manualReceivedMessage.trim()
+    selectedManualPerson.trim() && manualSituation.trim() && manualReceivedMessage.trim()
 
   const chatRelationLabel =
     selectedRelation === '직접 입력'
@@ -342,57 +358,100 @@ export default function HomePage() {
     }, 550 + Math.random() * 450)
   }
 
+  const closePersonCreateModal = () => {
+    setShowPersonCreateModal(false)
+    setNewPersonName('')
+    setNewPersonBirthDate('')
+    setNewPersonCurrentRelation('')
+    setNewPersonGoalRelation('')
+    setNewPersonPersonality('')
+    setNewPersonNotes('')
+  }
+
+  const createPersonProfile = () => {
+    const personName = newPersonName.trim()
+    if (!personName) return
+    const existingPerson = personProfiles.find((person) => person.name === personName)
+    if (existingPerson) {
+      setSelectedRealtimePerson(existingPerson.name)
+      closePersonCreateModal()
+      return
+    }
+    setPersonProfiles((prev) => [
+      ...prev,
+      {
+        id: `person-${Date.now()}`,
+        name: personName,
+        birthDate: newPersonBirthDate,
+        currentRelation: newPersonCurrentRelation.trim(),
+        goalRelation: newPersonGoalRelation.trim(),
+        personality: newPersonPersonality.trim(),
+        notes: newPersonNotes.trim(),
+        createdAt: Date.now(),
+      },
+    ])
+    setSelectedRealtimePerson(personName)
+    closePersonCreateModal()
+    clearRealtimeResults()
+  }
+
   const renderRealtimeView = () => (
     <section className="respondy-three-column">
       <article className="respondy-card">
-        <label className="respondy-label">제목</label>
-        <input
-          className="respondy-input"
-          value={realtimeTitle}
-          onChange={(e) => {
-            setRealtimeTitle(e.target.value)
-            clearRealtimeResults()
-          }}
-          placeholder="예: 학교 선배와의 대화"
-          autoComplete="off"
-        />
-        <label className="respondy-label">상대방과의 관계</label>
-        <input
-          className="respondy-input"
-          value={realtimeRelation}
-          onChange={(e) => {
-            setRealtimeRelation(e.target.value)
-            clearRealtimeResults()
-          }}
-          placeholder="예: 선후배"
-          autoComplete="off"
-        />
-        <label className="respondy-label">목표 관계</label>
-        <input
-          className="respondy-input"
-          value={realtimeGoalRelation}
-          onChange={(e) => {
-            setRealtimeGoalRelation(e.target.value)
-            clearRealtimeResults()
-          }}
-          placeholder="예: 친한 친구"
-          autoComplete="off"
-        />
+        <label className="respondy-label" htmlFor="realtime-person-select">
+          인물 선택
+        </label>
+        <div className="respondy-inline-row">
+          <select
+            id="realtime-person-select"
+            className="respondy-input respondy-select"
+            value={selectedRealtimePerson}
+            onChange={(e) => {
+              setSelectedRealtimePerson(e.target.value)
+              clearRealtimeResults()
+            }}
+          >
+            <option value="">인물을 선택하세요</option>
+            {personProfiles.map((person) => (
+              <option key={person.id} value={person.name}>
+                {person.name}
+              </option>
+            ))}
+          </select>
+          <button
+            type="button"
+            className="respondy-add-btn"
+            onClick={() => setShowPersonCreateModal(true)}
+            aria-label="인물 생성"
+            title="인물 생성"
+          >
+            +
+          </button>
+        </div>
+        {personProfiles.length === 0 && (
+          <p className="respondy-helper-text respondy-helper-text--inline">
+            등록된 인물이 없습니다. <strong>+</strong> 버튼으로 인물을 먼저 만들어 주세요.
+          </p>
+        )}
         <label className="respondy-label">상황 설명</label>
         <textarea
           className="respondy-textarea"
-          value={realtimeSituation}
+          value={realtimeReceivedMessage}
           onChange={(e) => {
-            setRealtimeSituation(e.target.value)
+            setRealtimeReceivedMessage(e.target.value)
             clearRealtimeResults()
           }}
-          placeholder="상황을 입력하세요"
+          placeholder="분석할 상황을 입력하세요"
           autoComplete="off"
         />
         <button
-          className="respondy-primary-btn"
+          className={`respondy-primary-btn ${isRealtimeMonitoring ? 'respondy-danger-btn' : ''}`}
           type="button"
           onClick={() => {
+            if (isRealtimeMonitoring) {
+              setIsRealtimeMonitoring(false)
+              return
+            }
             if (!realtimeFormReady) return
             const id = `rt-${Date.now()}`
             setAnalysisHistory((h) => [
@@ -400,10 +459,11 @@ export default function HomePage() {
                 id,
                 at: Date.now(),
                 source: 'realtime',
-                title: realtimeTitle.trim(),
-                relation: realtimeRelation.trim(),
-                goalRelation: realtimeGoalRelation.trim(),
-                situation: realtimeSituation.trim(),
+                title: `${selectedRealtimePerson.trim()}와의 실시간 대화`,
+                relation: selectedRealtimePerson.trim(),
+                goalRelation: '대화 유지',
+                situation: realtimeReceivedMessage.trim(),
+                receivedMessage: realtimeReceivedMessage.trim(),
                 emotion: REALTIME_RESULT.emotion,
                 context: REALTIME_RESULT.context,
                 suggestions: [...REALTIME_RESULT.suggestions],
@@ -411,9 +471,10 @@ export default function HomePage() {
               ...h,
             ])
             setShowRealtimeResults(true)
+            setIsRealtimeMonitoring(true)
           }}
         >
-          실시간 감지 시작
+          {isRealtimeMonitoring ? '종료하기' : '실시간 감지 시작'}
         </button>
       </article>
 
@@ -465,36 +526,41 @@ export default function HomePage() {
   const renderManualView = () => (
     <section className="respondy-three-column">
       <article className="respondy-card">
-        <label className="respondy-label">제목</label>
-        <input
-          className="respondy-input"
-          value={manualTitle}
-          onChange={(e) => {
-            setManualTitle(e.target.value)
-            clearManualResults()
-          }}
-          placeholder="예: 학교 선배와의 대화"
-        />
-        <label className="respondy-label">상대방과의 관계</label>
-        <input
-          className="respondy-input"
-          value={manualRelation}
-          onChange={(e) => {
-            setManualRelation(e.target.value)
-            clearManualResults()
-          }}
-          placeholder="예: 선후배"
-        />
-        <label className="respondy-label">목표 관계</label>
-        <input
-          className="respondy-input"
-          value={manualGoalRelation}
-          onChange={(e) => {
-            setManualGoalRelation(e.target.value)
-            clearManualResults()
-          }}
-          placeholder="예: 친한 친구"
-        />
+        <label className="respondy-label" htmlFor="manual-person-select">
+          인물 선택
+        </label>
+        <div className="respondy-inline-row">
+          <select
+            id="manual-person-select"
+            className="respondy-input respondy-select"
+            value={selectedManualPerson}
+            onChange={(e) => {
+              setSelectedManualPerson(e.target.value)
+              clearManualResults()
+            }}
+          >
+            <option value="">인물을 선택하세요</option>
+            {personProfiles.map((person) => (
+              <option key={person.id} value={person.name}>
+                {person.name}
+              </option>
+            ))}
+          </select>
+          <button
+            type="button"
+            className="respondy-add-btn"
+            onClick={() => setShowPersonCreateModal(true)}
+            aria-label="인물 생성"
+            title="인물 생성"
+          >
+            +
+          </button>
+        </div>
+        {personProfiles.length === 0 && (
+          <p className="respondy-helper-text respondy-helper-text--inline">
+            등록된 인물이 없습니다. <strong>+</strong> 버튼으로 인물을 먼저 만들어 주세요.
+          </p>
+        )}
         <label className="respondy-label">상황 설명</label>
         <textarea
           className="respondy-textarea"
@@ -526,9 +592,9 @@ export default function HomePage() {
                 id,
                 at: Date.now(),
                 source: 'manual',
-                title: manualTitle.trim(),
-                relation: manualRelation.trim(),
-                goalRelation: manualGoalRelation.trim(),
+                title: `${selectedManualPerson.trim()}와의 수동 입력 대화`,
+                relation: selectedManualPerson.trim(),
+                goalRelation: '대화 유지',
                 situation: manualSituation.trim(),
                 receivedMessage: manualReceivedMessage.trim(),
                 emotion: MANUAL_RESULT.emotion,
@@ -754,7 +820,7 @@ export default function HomePage() {
   }
 
   const renderMyPage = () => (
-    <section className="respondy-two-column">
+    <section className="respondy-three-column">
       <article className="respondy-card">
         <h3 className="respondy-title">내 정보</h3>
         <label className="respondy-label">이름</label>
@@ -811,6 +877,35 @@ export default function HomePage() {
               <span className="respondy-history-item-title">{rec.title || '(제목 없음)'}</span>
             </button>
           ))
+        )}
+      </article>
+      <article className="respondy-card">
+        <h3 className="respondy-title">인물 관리</h3>
+        <p className="respondy-history-hint">
+          실시간 분석에서 생성한 인물 정보가 저장됩니다.
+        </p>
+        {personProfiles.length === 0 ? (
+          <p className="respondy-output-empty respondy-history-empty">저장된 인물 정보가 없습니다.</p>
+        ) : (
+          <div className="respondy-person-list">
+            {personProfiles.map((person) => (
+              <div key={person.id} className="respondy-person-item">
+                <p className="respondy-person-name">{person.name}</p>
+                <dl className="respondy-person-meta">
+                  <dt>나이(생년월일)</dt>
+                  <dd>{person.birthDate || '—'}</dd>
+                  <dt>현재 관계</dt>
+                  <dd>{person.currentRelation || '—'}</dd>
+                  <dt>목표 관계</dt>
+                  <dd>{person.goalRelation || '—'}</dd>
+                  <dt>성격</dt>
+                  <dd>{person.personality || '—'}</dd>
+                  <dt>특이사항</dt>
+                  <dd className="respondy-modal-pre">{person.notes || '—'}</dd>
+                </dl>
+              </div>
+            ))}
+          </div>
         )}
       </article>
     </section>
@@ -875,6 +970,122 @@ export default function HomePage() {
       </header>
 
       <main className="respondy-main">{renderMainContent()}</main>
+
+      {loggedIn && showPersonCreateModal && (
+        <div className="respondy-modal-backdrop" role="presentation" onClick={closePersonCreateModal}>
+          <div
+            className="respondy-modal respondy-person-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="person-create-modal-title"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="respondy-modal-head">
+              <div className="respondy-modal-head-text">
+                <p className="respondy-modal-eyebrow">인물 생성</p>
+                <h2 id="person-create-modal-title" className="respondy-modal-title">
+                  새 인물 만들기
+                </h2>
+              </div>
+              <button
+                type="button"
+                className="respondy-modal-close"
+                onClick={closePersonCreateModal}
+                aria-label="닫기"
+              >
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden>
+                  <path
+                    d="M18 6L6 18M6 6l12 12"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                  />
+                </svg>
+              </button>
+            </div>
+            <div className="respondy-modal-body">
+              <div className="respondy-person-form-grid">
+                <label className="respondy-label" htmlFor="person-name">
+                  이름
+                </label>
+                <input
+                  id="person-name"
+                  className="respondy-input"
+                  value={newPersonName}
+                  onChange={(e) => setNewPersonName(e.target.value)}
+                  placeholder="예: 김민지"
+                  autoComplete="off"
+                />
+                <label className="respondy-label" htmlFor="person-birthdate">
+                  나이(생년월일)
+                </label>
+                <input
+                  id="person-birthdate"
+                  type="date"
+                  className="respondy-input"
+                  value={newPersonBirthDate}
+                  onChange={(e) => setNewPersonBirthDate(e.target.value)}
+                />
+                <label className="respondy-label" htmlFor="person-current-relation">
+                  현재 관계
+                </label>
+                <input
+                  id="person-current-relation"
+                  className="respondy-input"
+                  value={newPersonCurrentRelation}
+                  onChange={(e) => setNewPersonCurrentRelation(e.target.value)}
+                  placeholder="예: 선후배"
+                  autoComplete="off"
+                />
+                <label className="respondy-label" htmlFor="person-goal-relation">
+                  목표 관계
+                </label>
+                <input
+                  id="person-goal-relation"
+                  className="respondy-input"
+                  value={newPersonGoalRelation}
+                  onChange={(e) => setNewPersonGoalRelation(e.target.value)}
+                  placeholder="예: 친한 친구"
+                  autoComplete="off"
+                />
+                <label className="respondy-label" htmlFor="person-personality">
+                  성격
+                </label>
+                <textarea
+                  id="person-personality"
+                  className="respondy-textarea"
+                  value={newPersonPersonality}
+                  onChange={(e) => setNewPersonPersonality(e.target.value)}
+                  placeholder="예: 조용하지만 배려심이 많음"
+                />
+                <label className="respondy-label" htmlFor="person-notes">
+                  특이사항
+                </label>
+                <textarea
+                  id="person-notes"
+                  className="respondy-textarea"
+                  value={newPersonNotes}
+                  onChange={(e) => setNewPersonNotes(e.target.value)}
+                  placeholder="예: 주말엔 답장이 늦는 편"
+                />
+              </div>
+              <div className="respondy-modal-actions">
+                <button type="button" className="respondy-modal-secondary-btn" onClick={closePersonCreateModal}>
+                  취소
+                </button>
+                <button
+                  type="button"
+                  className="respondy-primary-btn respondy-modal-primary-btn"
+                  onClick={createPersonProfile}
+                  disabled={!newPersonName.trim()}
+                >
+                  인물 생성
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {loggedIn && historyDetail && (
         <div
