@@ -1555,12 +1555,22 @@ export default function HomePage() {
               <section className="respondy-modal-section respondy-modal-panel">
                 <h3 className="respondy-modal-section-title">추천 답장</h3>
                 <ul className="respondy-modal-suggestions">
-                  {historyDetail.suggestions.map((s, i) => (
-                    <li key={`${historyDetail.id}-s-${i}`} className="respondy-modal-suggestion">
-                      <span className="respondy-modal-suggestion-index">{i + 1}</span>
-                      <span className="respondy-modal-suggestion-text">{s}</span>
-                    </li>
-                  ))}
+                  {historyDetail.suggestions.map((s, i) => {
+                    const copyId = `history-${historyDetail.id}-${i}`
+                    return (
+                      <li key={`${historyDetail.id}-s-${i}`} className="respondy-modal-suggestion">
+                        <span className="respondy-modal-suggestion-index">{i + 1}</span>
+                        <span className="respondy-modal-suggestion-text">{s}</span>
+                        <button
+                          type="button"
+                          className="respondy-modal-copy-btn"
+                          onClick={() => void copySuggestion(s, copyId)}
+                        >
+                          {copiedSuggestionId === copyId ? '복사됨' : '복사하기'}
+                        </button>
+                      </li>
+                    )
+                  })}
                 </ul>
               </section>
             </div>

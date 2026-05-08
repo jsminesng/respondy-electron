@@ -669,7 +669,7 @@
   }
 
   .respondy-modal-suggestion {
-    @apply flex gap-3 rounded-lg border border-white/[0.08] bg-black/25 px-4 py-3.5 text-sm leading-relaxed text-white/90;
+    @apply flex items-start gap-3 rounded-lg border border-white/[0.08] bg-black/25 px-4 py-3.5 text-sm leading-relaxed text-white/90;
   }
 
   .respondy-modal-suggestion-index {
@@ -678,6 +678,10 @@
 
   .respondy-modal-suggestion-text {
     @apply min-w-0 flex-1 pt-0.5;
+  }
+
+  .respondy-modal-copy-btn {
+    @apply shrink-0 rounded-full border border-white/20 bg-white/10 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-white/20;
   }
 
   .respondy-person-form-grid {
