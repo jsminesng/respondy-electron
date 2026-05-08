@@ -995,6 +995,13 @@ export default function HomePage() {
             ))}
           </div>
         )}
+        <button
+          className="respondy-primary-btn"
+          type="button"
+          onClick={() => setShowPersonCreateModal(true)}
+        >
+          인물 생성
+        </button>
       </article>
     </section>
   )
