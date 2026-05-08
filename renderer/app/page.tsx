@@ -481,6 +481,7 @@ export default function HomePage() {
   const renderRealtimeView = () => (
     <section className="respondy-three-column">
       <article className="respondy-card">
+        <h3 className="respondy-card-title">컨텍스트 입력</h3>
         <label className="respondy-label" htmlFor="realtime-person-select">
           인물 선택
         </label>
@@ -609,6 +610,7 @@ export default function HomePage() {
   const renderManualView = () => (
     <section className="respondy-three-column">
       <article className="respondy-card">
+        <h3 className="respondy-card-title">컨텍스트 입력</h3>
         <label className="respondy-label" htmlFor="manual-person-select">
           인물 선택
         </label>
