@@ -435,6 +435,14 @@
     @apply flex w-full flex-wrap items-center justify-between gap-x-4 gap-y-2;
   }
 
+  .respondy-history-item-actions {
+    @apply mt-4 flex justify-end;
+  }
+
+  .respondy-item-delete-btn {
+    @apply h-8 rounded-full border border-red-300/60 bg-red-500/80 px-3.5 text-xs font-bold text-white shadow-sm transition-colors hover:bg-red-500;
+  }
+
   .respondy-history-item-date {
     @apply text-[0.8125rem] font-medium tabular-nums tracking-tight text-white/75;
   }

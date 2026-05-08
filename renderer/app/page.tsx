@@ -478,6 +478,23 @@ export default function HomePage() {
     closePersonDetailModal()
   }
 
+  const removeAnalysisRecord = (recordId: string) => {
+    if (!window.confirm('삭제하시겠습니까?')) return
+    setAnalysisHistory((prev) => prev.filter((record) => record.id !== recordId))
+    if (historyDetailId === recordId) setHistoryDetailId(null)
+  }
+
+  const removePersonProfile = (personId: string) => {
+    if (!window.confirm('삭제하시겠습니까?')) return
+    const target = personProfiles.find((person) => person.id === personId)
+    if (!target) return
+    setPersonProfiles((prev) => prev.filter((person) => person.id !== personId))
+    if (selectedRealtimePerson === target.name) setSelectedRealtimePerson('')
+    if (selectedManualPerson === target.name) setSelectedManualPerson('')
+    if (selectedChatPerson === target.name) setSelectedChatPerson('')
+    if (personDetailId === personId) closePersonDetailModal()
+  }
+
   const renderRealtimeView = () => (
     <section className="respondy-three-column">
       <article className="respondy-card">
@@ -966,6 +983,18 @@ export default function HomePage() {
                 </div>
                 <div className="respondy-history-item-divider" aria-hidden />
                 <span className="respondy-history-item-title">{rec.title || '(제목 없음)'}</span>
+                <div className="respondy-history-item-actions">
+                  <button
+                    type="button"
+                    className="respondy-item-delete-btn"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      removeAnalysisRecord(rec.id)
+                    }}
+                  >
+                    삭제
+                  </button>
+                </div>
               </button>
             ))}
           </div>
@@ -995,6 +1024,18 @@ export default function HomePage() {
                 <span className="respondy-person-item-summary">
                   {person.currentRelation || '관계 미입력'} · {person.goalRelation || '목표 미입력'}
                 </span>
+                <div className="respondy-history-item-actions">
+                  <button
+                    type="button"
+                    className="respondy-item-delete-btn"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      removePersonProfile(person.id)
+                    }}
+                  >
+                    삭제
+                  </button>
+                </div>
               </button>
             ))}
           </div>
