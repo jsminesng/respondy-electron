@@ -206,6 +206,14 @@
     @apply mt-4 h-11 w-full cursor-pointer rounded-full border-none bg-[#4338ca] text-base font-semibold text-white transition-colors hover:bg-[#4f46e5] disabled:cursor-not-allowed disabled:opacity-45 disabled:hover:bg-[#4338ca] sm:mt-5 sm:h-12 sm:text-lg;
   }
 
+  .respondy-profile-actions {
+    @apply mt-4 grid gap-2 sm:mt-5;
+  }
+
+  .respondy-secondary-btn {
+    @apply mt-0 bg-white/20 hover:bg-white/30;
+  }
+
   .respondy-danger-btn {
     background-color: #dc2626 !important;
   }

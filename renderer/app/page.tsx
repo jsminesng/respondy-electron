@@ -78,10 +78,14 @@ export default function HomePage() {
   const [profilePassword, setProfilePassword] = useState('abc123!')
   const [profileBirthDate, setProfileBirthDate] = useState('2001-01-01')
   const [showProfileEditModal, setShowProfileEditModal] = useState(false)
+  const [showPasswordChangeModal, setShowPasswordChangeModal] = useState(false)
   const [editProfileName, setEditProfileName] = useState('')
   const [editProfileEmail, setEditProfileEmail] = useState('')
-  const [editProfilePassword, setEditProfilePassword] = useState('')
   const [editProfileBirthDate, setEditProfileBirthDate] = useState('')
+  const [currentPasswordInput, setCurrentPasswordInput] = useState('')
+  const [newPasswordInput, setNewPasswordInput] = useState('')
+  const [confirmPasswordInput, setConfirmPasswordInput] = useState('')
+  const [passwordChangeError, setPasswordChangeError] = useState('')
   const [selectedView, setSelectedView] = useState<AppView>('realtime')
   const [selectedChatPerson, setSelectedChatPerson] = useState('')
   const [chatStep, setChatStep] = useState<ChatStep>('select')
@@ -374,7 +378,6 @@ export default function HomePage() {
   const openProfileEditModal = () => {
     setEditProfileName(userName)
     setEditProfileEmail(profileEmail)
-    setEditProfilePassword(profilePassword)
     setEditProfileBirthDate(profileBirthDate)
     setShowProfileEditModal(true)
   }
@@ -383,20 +386,53 @@ export default function HomePage() {
     setShowProfileEditModal(false)
     setEditProfileName('')
     setEditProfileEmail('')
-    setEditProfilePassword('')
     setEditProfileBirthDate('')
+  }
+
+  const openPasswordChangeModal = () => {
+    setCurrentPasswordInput('')
+    setNewPasswordInput('')
+    setConfirmPasswordInput('')
+    setPasswordChangeError('')
+    setShowPasswordChangeModal(true)
+  }
+
+  const closePasswordChangeModal = () => {
+    setShowPasswordChangeModal(false)
+    setCurrentPasswordInput('')
+    setNewPasswordInput('')
+    setConfirmPasswordInput('')
+    setPasswordChangeError('')
   }
 
   const saveProfile = () => {
     const nextName = editProfileName.trim()
     const nextEmail = editProfileEmail.trim()
-    const nextPassword = editProfilePassword.trim()
-    if (!nextName || !nextEmail || !nextPassword) return
+    if (!nextName || !nextEmail) return
     setUserName(nextName)
     setProfileEmail(nextEmail)
-    setProfilePassword(nextPassword)
     setProfileBirthDate(editProfileBirthDate)
     closeProfileEditModal()
+  }
+
+  const saveChangedPassword = () => {
+    if (!currentPasswordInput || !newPasswordInput || !confirmPasswordInput) return
+    if (currentPasswordInput !== profilePassword) {
+      setPasswordChangeError('현재 비밀번호가 올바르지 않습니다.')
+      return
+    }
+    if (newPasswordInput !== confirmPasswordInput) {
+      setPasswordChangeError('새 비밀번호와 확인 비밀번호가 일치하지 않습니다.')
+      return
+    }
+    if (newPasswordInput === profilePassword) {
+      setPasswordChangeError('새 비밀번호는 현재 비밀번호와 다르게 입력해 주세요.')
+      return
+    }
+
+    setProfilePassword(newPasswordInput)
+    closePasswordChangeModal()
+    window.alert('비밀번호가 변경되었습니다.')
   }
 
   const createPersonProfile = () => {
@@ -942,13 +978,18 @@ export default function HomePage() {
           <dt>생년월일</dt>
           <dd>{profileBirthDate || '—'}</dd>
         </dl>
-        <button
-          className="respondy-primary-btn"
-          type="button"
-          onClick={openProfileEditModal}
-        >
-          프로필 수정
-        </button>
+        <div className="respondy-profile-actions">
+          <button className="respondy-primary-btn" type="button" onClick={openProfileEditModal}>
+            프로필 수정
+          </button>
+          <button
+            className="respondy-primary-btn respondy-secondary-btn"
+            type="button"
+            onClick={openPasswordChangeModal}
+          >
+            비밀번호 변경
+          </button>
+        </div>
       </article>
 
       <article className="respondy-card">
@@ -1244,18 +1285,6 @@ export default function HomePage() {
                   placeholder="이메일을 입력하세요"
                   autoComplete="email"
                 />
-                <label className="respondy-label" htmlFor="profile-password">
-                  비밀번호 설정
-                </label>
-                <input
-                  id="profile-password"
-                  className="respondy-input"
-                  type="password"
-                  value={editProfilePassword}
-                  onChange={(e) => setEditProfilePassword(e.target.value)}
-                  placeholder="비밀번호를 입력하세요"
-                  autoComplete="new-password"
-                />
                 <label className="respondy-label" htmlFor="profile-birthdate">
                   생년월일
                 </label>
@@ -1279,11 +1308,111 @@ export default function HomePage() {
                   type="button"
                   className="respondy-primary-btn respondy-modal-primary-btn"
                   onClick={saveProfile}
-                  disabled={
-                    !editProfileName.trim() || !editProfileEmail.trim() || !editProfilePassword.trim()
-                  }
+                  disabled={!editProfileName.trim() || !editProfileEmail.trim()}
                 >
                   저장하기
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {loggedIn && showPasswordChangeModal && (
+        <div className="respondy-modal-backdrop" role="presentation" onClick={closePasswordChangeModal}>
+          <div
+            className="respondy-modal respondy-person-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="password-change-modal-title"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="respondy-modal-head">
+              <div className="respondy-modal-head-text">
+                <p className="respondy-modal-eyebrow">보안 설정</p>
+                <h2 id="password-change-modal-title" className="respondy-modal-title">
+                  비밀번호 변경
+                </h2>
+              </div>
+              <button
+                type="button"
+                className="respondy-modal-close"
+                onClick={closePasswordChangeModal}
+                aria-label="닫기"
+              >
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden>
+                  <path
+                    d="M18 6L6 18M6 6l12 12"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                  />
+                </svg>
+              </button>
+            </div>
+            <div className="respondy-modal-body">
+              <div className="respondy-person-form-grid">
+                <label className="respondy-label" htmlFor="current-password">
+                  현재 비밀번호
+                </label>
+                <input
+                  id="current-password"
+                  className="respondy-input"
+                  type="password"
+                  value={currentPasswordInput}
+                  onChange={(e) => {
+                    setCurrentPasswordInput(e.target.value)
+                    setPasswordChangeError('')
+                  }}
+                  autoComplete="current-password"
+                />
+                <label className="respondy-label" htmlFor="new-password">
+                  새 비밀번호
+                </label>
+                <input
+                  id="new-password"
+                  className="respondy-input"
+                  type="password"
+                  value={newPasswordInput}
+                  onChange={(e) => {
+                    setNewPasswordInput(e.target.value)
+                    setPasswordChangeError('')
+                  }}
+                  autoComplete="new-password"
+                />
+                <label className="respondy-label" htmlFor="confirm-password">
+                  새 비밀번호 확인
+                </label>
+                <input
+                  id="confirm-password"
+                  className="respondy-input"
+                  type="password"
+                  value={confirmPasswordInput}
+                  onChange={(e) => {
+                    setConfirmPasswordInput(e.target.value)
+                    setPasswordChangeError('')
+                  }}
+                  autoComplete="new-password"
+                />
+              </div>
+              {passwordChangeError && (
+                <p className="respondy-helper-text respondy-helper-text--inline">{passwordChangeError}</p>
+              )}
+              <div className="respondy-modal-actions">
+                <button
+                  type="button"
+                  className="respondy-modal-secondary-btn"
+                  onClick={closePasswordChangeModal}
+                >
+                  취소
+                </button>
+                <button
+                  type="button"
+                  className="respondy-primary-btn respondy-modal-primary-btn"
+                  onClick={saveChangedPassword}
+                  disabled={!currentPasswordInput || !newPasswordInput || !confirmPasswordInput}
+                >
+                  변경하기
                 </button>
               </div>
             </div>
