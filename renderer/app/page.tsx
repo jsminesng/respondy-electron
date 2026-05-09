@@ -49,6 +49,8 @@ const CHAT_DEMO_REPLIES = [
   '음… 그때 기분은 어땠어? 조금 더 구체적으로 말해줄 수 있어?',
 ]
 
+const AGE_GROUP_OPTIONS = ['10대', '20대', '30대', '40대', '50대', '60대 이상'] as const
+
 function formatChatTime(ts: number) {
   return new Date(ts).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })
 }
@@ -1465,16 +1467,22 @@ export default function HomePage() {
                   placeholder="예: 김민지"
                   autoComplete="off"
                 />
-                <label className="respondy-label" htmlFor="person-birthdate">
-                  나이(생년월일)
+                <label className="respondy-label" htmlFor="person-age-group">
+                  나이대
                 </label>
-                <input
-                  id="person-birthdate"
-                  type="date"
-                  className="respondy-input"
+                <select
+                  id="person-age-group"
+                  className="respondy-input respondy-select"
                   value={newPersonBirthDate}
                   onChange={(e) => setNewPersonBirthDate(e.target.value)}
-                />
+                >
+                  <option value="">나이대를 선택하세요</option>
+                  {AGE_GROUP_OPTIONS.map((ageGroup) => (
+                    <option key={ageGroup} value={ageGroup}>
+                      {ageGroup}
+                    </option>
+                  ))}
+                </select>
                 <label className="respondy-label" htmlFor="person-current-relation">
                   현재 관계
                 </label>
@@ -1580,16 +1588,22 @@ export default function HomePage() {
                   onChange={(e) => setEditPersonName(e.target.value)}
                   autoComplete="off"
                 />
-                <label className="respondy-label" htmlFor="person-detail-birthdate">
-                  나이(생년월일)
+                <label className="respondy-label" htmlFor="person-detail-age-group">
+                  나이대
                 </label>
-                <input
-                  id="person-detail-birthdate"
-                  type="date"
-                  className="respondy-input"
+                <select
+                  id="person-detail-age-group"
+                  className="respondy-input respondy-select"
                   value={editPersonBirthDate}
                   onChange={(e) => setEditPersonBirthDate(e.target.value)}
-                />
+                >
+                  <option value="">나이대를 선택하세요</option>
+                  {AGE_GROUP_OPTIONS.map((ageGroup) => (
+                    <option key={ageGroup} value={ageGroup}>
+                      {ageGroup}
+                    </option>
+                  ))}
+                </select>
                 <label className="respondy-label" htmlFor="person-detail-current-relation">
                   현재 관계
                 </label>
