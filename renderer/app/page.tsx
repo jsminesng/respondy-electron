@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 
 type AuthView = 'login' | 'signup'
-type AppView = 'realtime' | 'manual' | 'chat' | 'mypage'
+type AppView = 'realtime' | 'manual' | 'chat' | 'mypage' | 'help'
 type ChatStep = 'select' | 'conversation'
 type ChatRole = 'user' | 'assistant'
 type ChatBubble = { id: string; role: ChatRole; text: string; at: number }
@@ -1053,6 +1053,49 @@ export default function HomePage() {
     </section>
   )
 
+  const renderHelpView = () => (
+    <section className="respondy-center">
+      <article className="respondy-card respondy-help-card">
+        <h2 className="respondy-title respondy-title--card">사용 설명</h2>
+        <p className="respondy-help-intro">
+          RESPONDY는 상대와의 대화를 더 자연스럽게 이어가기 위한 실시간 커뮤니케이션 코치 앱입니다.
+        </p>
+        <div className="respondy-help-sections">
+          <section>
+            <h3 className="respondy-help-subtitle">1) 실시간 분석</h3>
+            <p>
+              상대 메시지를 입력하고 실시간 분석을 시작하면 감정 흐름과 맥락, 추천 답장을 확인할 수 있습니다.
+            </p>
+          </section>
+          <section>
+            <h3 className="respondy-help-subtitle">2) 수동 입력</h3>
+            <p>
+              특정 상황을 직접 입력해 결과를 보고 싶을 때 사용합니다. 메시지와 상황을 적으면 분석 결과를 즉시
+              확인할 수 있습니다.
+            </p>
+          </section>
+          <section>
+            <h3 className="respondy-help-subtitle">3) AI챗</h3>
+            <p>
+              대화 연습이 필요할 때 AI챗에서 톤과 표현을 점검할 수 있습니다. Enter 전송, Shift+Enter 줄바꿈이
+              가능합니다.
+            </p>
+          </section>
+          <section>
+            <h3 className="respondy-help-subtitle">4) 마이페이지</h3>
+            <p>
+              분석 기록과 인물 정보를 저장/관리할 수 있습니다. 기록 또는 인물 항목을 누르면 상세 내용을 다시 볼
+              수 있습니다.
+            </p>
+          </section>
+        </div>
+        <button className="respondy-primary-btn" type="button" onClick={() => setSelectedView('realtime')}>
+          실시간 분석으로 돌아가기
+        </button>
+      </article>
+    </section>
+  )
+
   const renderMainContent = () => {
     if (!loggedIn) {
       return (
@@ -1063,6 +1106,7 @@ export default function HomePage() {
     if (selectedView === 'manual') return renderManualView()
     if (selectedView === 'chat') return renderChatView()
     if (selectedView === 'mypage') return renderMyPage()
+    if (selectedView === 'help') return renderHelpView()
     return renderRealtimeView()
   }
 
@@ -1112,19 +1156,29 @@ export default function HomePage() {
         )}
         <div className="respondy-header-trailing">
           {loggedIn ? (
-            <button
-              className="respondy-logout-btn"
-              type="button"
-              onClick={() => {
-                setLoggedIn(false)
-                setAuthView('login')
-                setSelectedView('realtime')
-                setAnalysisHistory([])
-                setHistoryDetailId(null)
-              }}
-            >
-              로그아웃
-            </button>
+            <>
+              <button
+                className="respondy-help-btn"
+                type="button"
+                aria-label="사용 설명 보기"
+                onClick={() => setSelectedView('help')}
+              >
+                ?
+              </button>
+              <button
+                className="respondy-logout-btn"
+                type="button"
+                onClick={() => {
+                  setLoggedIn(false)
+                  setAuthView('login')
+                  setSelectedView('realtime')
+                  setAnalysisHistory([])
+                  setHistoryDetailId(null)
+                }}
+              >
+                로그아웃
+              </button>
+            </>
           ) : (
             <span className="respondy-header-spacer" aria-hidden />
           )}

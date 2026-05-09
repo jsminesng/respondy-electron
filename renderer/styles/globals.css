@@ -51,7 +51,7 @@
   }
 
   .respondy-header-trailing {
-    @apply ml-auto flex shrink-0 justify-end;
+    @apply ml-auto flex shrink-0 items-center justify-end gap-2;
   }
 
   .respondy-header-spacer {
@@ -74,6 +74,10 @@
     @apply rounded-full border-none bg-[#6d53ff] px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-[#7f69ff] sm:px-6 sm:text-base;
   }
 
+  .respondy-help-btn {
+    @apply flex h-10 w-10 items-center justify-center rounded-full border border-white/25 bg-white/10 text-lg font-extrabold text-white transition-colors hover:bg-white/20;
+  }
+
   .respondy-main {
     @apply mx-auto w-full max-w-[1320px] flex-1 pt-8 sm:pt-10;
   }
@@ -85,6 +89,30 @@
 
   .respondy-center {
     @apply flex justify-center;
+  }
+
+  .respondy-help-card {
+    @apply w-full max-w-4xl;
+  }
+
+  .respondy-help-intro {
+    @apply mb-5 rounded-xl bg-white/10 px-4 py-3 text-sm font-medium leading-relaxed text-white/95 sm:text-base;
+  }
+
+  .respondy-help-sections {
+    @apply mb-6 grid gap-3 sm:gap-4;
+  }
+
+  .respondy-help-sections section {
+    @apply rounded-xl bg-white/8 px-4 py-3;
+  }
+
+  .respondy-help-subtitle {
+    @apply mb-1 text-lg font-bold text-[#fef08a] sm:text-xl;
+  }
+
+  .respondy-help-sections p {
+    @apply text-sm leading-relaxed text-white/90 sm:text-base;
   }
 
   .respondy-center--auth {
