@@ -11,6 +11,7 @@ import {
 import type {
   LoginInput,
   NotificationPayload,
+  OcrRegion,
   OcrSettings,
   SignupInput,
 } from '../shared/respondy-types'
@@ -37,8 +38,10 @@ if (isProd) {
 
 let mainWindow: BrowserWindow | null = null
 let overlayWindow: BrowserWindow | null = null
+let regionPickerWindow: BrowserWindow | null = null
 let ocrLoopHandle: ReturnType<typeof startOcrLoop> | null = null
 let isRealtimeDetectionActive = false
+let resolveRegionPicker: ((value: OcrRegion | null) => void) | null = null
 
 function sendToRenderer(
   win: BrowserWindow | null,
@@ -92,6 +95,83 @@ function restartOcrLoop() {
       console.error('[Respondy] OCR:', err.message)
     },
   )
+}
+
+function normalizeRegion(region: OcrRegion): OcrRegion {
+  return {
+    x: Math.floor(region.x),
+    y: Math.floor(region.y),
+    width: Math.max(8, Math.floor(region.width)),
+    height: Math.max(8, Math.floor(region.height)),
+  }
+}
+
+async function openRegionPicker(): Promise<OcrRegion | null> {
+  if (resolveRegionPicker) {
+    throw new Error('영역 선택이 이미 진행 중입니다.')
+  }
+
+  const display = screen.getPrimaryDisplay()
+  const { bounds } = display
+
+  regionPickerWindow = new BrowserWindow({
+    x: bounds.x,
+    y: bounds.y,
+    width: bounds.width,
+    height: bounds.height,
+    frame: false,
+    transparent: true,
+    resizable: false,
+    movable: false,
+    minimizable: false,
+    maximizable: false,
+    closable: true,
+    focusable: true,
+    skipTaskbar: true,
+    fullscreenable: false,
+    alwaysOnTop: true,
+    hasShadow: false,
+    webPreferences: {
+      preload: path.join(__dirname, 'preload.js'),
+    },
+  })
+
+  regionPickerWindow.setAlwaysOnTop(true, 'screen-saver')
+  regionPickerWindow.setVisibleOnAllWorkspaces(true, {
+    visibleOnFullScreen: true,
+  })
+  regionPickerWindow.setFullScreenable(false)
+  regionPickerWindow.setMenuBarVisibility(false)
+
+  if (isProd) {
+    await regionPickerWindow.loadURL('app://./region-picker/')
+  } else {
+    const port = process.argv[2]
+    await regionPickerWindow.loadURL(`http://localhost:${port}/region-picker/`)
+  }
+  regionPickerWindow.show()
+  regionPickerWindow.focus()
+
+  return new Promise<OcrRegion | null>((resolve) => {
+    resolveRegionPicker = resolve
+    regionPickerWindow?.once('closed', () => {
+      regionPickerWindow = null
+      if (resolveRegionPicker) {
+        resolveRegionPicker(null)
+        resolveRegionPicker = null
+      }
+    })
+  })
+}
+
+function completeRegionPicker(region: OcrRegion | null) {
+  if (!resolveRegionPicker) return
+  resolveRegionPicker(region)
+  resolveRegionPicker = null
+  if (regionPickerWindow && !regionPickerWindow.isDestroyed()) {
+    regionPickerWindow.close()
+  }
+  regionPickerWindow = null
 }
 
 ;(async () => {
@@ -204,6 +284,27 @@ function restartOcrLoop() {
     active: isRealtimeDetectionActive,
   }))
 
+  ipcMain.handle('ocr:pick-region', async () => {
+    const picked = await openRegionPicker()
+    if (!picked) return null
+    const region = normalizeRegion(picked)
+    ocrSettingsStore.set({
+      ...ocrSettingsStore.store,
+      region,
+    })
+    restartOcrLoop()
+    return region
+  })
+
+  ipcMain.on('ocr:picker-submit', (_evt, region: OcrRegion) => {
+    if (!region) return
+    completeRegionPicker(normalizeRegion(region))
+  })
+
+  ipcMain.on('ocr:picker-cancel', () => {
+    completeRegionPicker(null)
+  })
+
   ipcMain.handle('ocr:get-display-bounds', () => {
     const { bounds } = screen.getPrimaryDisplay()
     return {
@@ -226,6 +327,7 @@ function restartOcrLoop() {
   // 실시간 감지 시작 버튼을 누른 이후에만 루프를 시작한다.
 
   app.on('before-quit', () => {
+    completeRegionPicker(null)
     ocrLoopHandle?.stop()
     ocrLoopHandle = null
   })

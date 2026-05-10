@@ -13,6 +13,7 @@ export function OcrSettingsPanel() {
     height: number
   } | null>(null)
   const [saving, setSaving] = useState(false)
+  const [picking, setPicking] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   const load = useCallback(async () => {
@@ -52,6 +53,23 @@ export function OcrSettingsPanel() {
       setError(e instanceof Error ? e.message : '저장에 실패했습니다.')
     } finally {
       setSaving(false)
+    }
+  }
+
+  const pickRegion = async () => {
+    const r = getRespondy()
+    if (!r) return
+    setPicking(true)
+    setError(null)
+    try {
+      const picked = await r.pickOcrRegion()
+      if (!picked) return
+      const s = await r.getOcrSettings()
+      setSettings(s)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : '영역 선택에 실패했습니다.')
+    } finally {
+      setPicking(false)
     }
   }
 
@@ -187,11 +205,19 @@ export function OcrSettingsPanel() {
         </div>
         <button
           type="button"
-          disabled={saving}
+          disabled={saving || picking}
           onClick={() => void update({ region: settings.region })}
           className="rounded-xl border border-violet-500/40 bg-violet-600/30 px-4 py-2 text-sm font-medium text-white hover:bg-violet-600/50"
         >
           영역 적용
+        </button>
+        <button
+          type="button"
+          disabled={saving || picking}
+          onClick={() => void pickRegion()}
+          className="rounded-xl border border-white/20 bg-white/5 px-4 py-2 text-sm font-medium text-slate-100 hover:bg-white/10"
+        >
+          {picking ? '선택 창 여는 중…' : '화면에서 영역 선택'}
         </button>
       </div>
 

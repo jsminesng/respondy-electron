@@ -2,6 +2,7 @@ import { contextBridge, ipcRenderer, IpcRendererEvent } from "electron";
 import type {
   DisplayBounds,
   NotificationPayload,
+  OcrRegion,
   OcrSettings,
   RespondyApi,
   SentimentResult,
@@ -50,6 +51,15 @@ const respondy: RespondyApi = {
   },
   getRealtimeDetectionState(): Promise<{ active: boolean }> {
     return ipcRenderer.invoke("ocr:get-runtime-state");
+  },
+  pickOcrRegion(): Promise<OcrRegion | null> {
+    return ipcRenderer.invoke("ocr:pick-region");
+  },
+  submitOcrRegionSelection(region: OcrRegion) {
+    ipcRenderer.send("ocr:picker-submit", region);
+  },
+  cancelOcrRegionSelection() {
+    ipcRenderer.send("ocr:picker-cancel");
   },
   getOcrSettings(): Promise<OcrSettings> {
     return ipcRenderer.invoke("ocr:get-settings");
