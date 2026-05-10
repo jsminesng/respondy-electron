@@ -1,71 +1,71 @@
-'use client'
+"use client";
 
-import { AnimatePresence, motion } from 'framer-motion'
-import { useCallback, useEffect, useState } from 'react'
-import { getRespondy } from '../lib/respondy-client'
+import { AnimatePresence, motion } from "framer-motion";
+import { useCallback, useEffect, useState } from "react";
+import { getRespondy } from "../lib/respondy-client";
 import type {
   NotificationPayload,
   ReplySuggestion,
   SentimentResult,
-} from '../../shared/respondy-types'
+} from "../../shared/respondy-types";
 
 const toneLabel: Record<string, string> = {
-  warm: '다정한',
-  witty: '위트있는',
-  firm: '단호한',
-}
+  warm: "다정한",
+  witty: "위트있는",
+  firm: "단호한",
+};
 
 export function OverlayPanel() {
-  const [payload, setPayload] = useState<NotificationPayload | null>(null)
-  const [sentiment, setSentiment] = useState<SentimentResult | null>(null)
-  const [replies, setReplies] = useState<ReplySuggestion[]>([])
-  const [loading, setLoading] = useState(false)
-  const [copied, setCopied] = useState<string | null>(null)
-  const [error, setError] = useState<string | null>(null)
+  const [payload, setPayload] = useState<NotificationPayload | null>(null);
+  const [sentiment, setSentiment] = useState<SentimentResult | null>(null);
+  const [replies, setReplies] = useState<ReplySuggestion[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [copied, setCopied] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   const runPipeline = useCallback(async (p: NotificationPayload) => {
-    const respondy = getRespondy()
+    const respondy = getRespondy();
     if (!respondy) {
-      setError('Electron 브리지가 없습니다.')
-      return
+      setError("Electron 브리지가 없습니다.");
+      return;
     }
-    setLoading(true)
-    setError(null)
+    setLoading(true);
+    setError(null);
     try {
-      const s = await respondy.analyzeSentiment(p.message)
-      setSentiment(s)
+      const s = await respondy.analyzeSentiment(p.message);
+      setSentiment(s);
       const r = await respondy.generateReplies({
         sender: p.sender,
         message: p.message,
         sentimentSummary: s.summary,
         dominantLabel: s.dominant,
-      })
-      setReplies(r)
+      });
+      setReplies(r);
     } catch (e) {
-      setError(e instanceof Error ? e.message : '분석에 실패했습니다.')
+      setError(e instanceof Error ? e.message : "분석에 실패했습니다.");
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }, [])
+  }, []);
 
   useEffect(() => {
-    const respondy = getRespondy()
-    if (!respondy) return
+    const respondy = getRespondy();
+    if (!respondy) return;
     return respondy.onNotification((p) => {
-      setPayload(p)
-      void runPipeline(p)
-    })
-  }, [runPipeline])
+      setPayload(p);
+      void runPipeline(p);
+    });
+  }, [runPipeline]);
 
   const copy = async (text: string, id: string) => {
     try {
-      await navigator.clipboard.writeText(text)
-      setCopied(id)
-      setTimeout(() => setCopied(null), 1400)
+      await navigator.clipboard.writeText(text);
+      setCopied(id);
+      setTimeout(() => setCopied(null), 1400);
     } catch {
-      setError('클립보드 복사에 실패했습니다.')
+      setError("클립보드 복사에 실패했습니다.");
     }
-  }
+  };
 
   return (
     <div className="pointer-events-auto flex min-h-screen items-start justify-center p-3">
@@ -74,7 +74,7 @@ export function OverlayPanel() {
         className="w-full max-w-[380px] overflow-hidden rounded-3xl border border-white/10 bg-slate-950/80 shadow-2xl shadow-violet-500/10 backdrop-blur-xl"
         initial={{ opacity: 0, y: 12, scale: 0.98 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
-        transition={{ type: 'spring', stiffness: 260, damping: 24 }}
+        transition={{ type: "spring", stiffness: 260, damping: 24 }}
       >
         <div className="flex items-center justify-between border-b border-white/5 px-4 py-3">
           <div>
@@ -108,7 +108,9 @@ export function OverlayPanel() {
                   OCR
                 </span>
               </p>
-              <p className="text-base font-medium text-white">{payload.sender}</p>
+              <p className="text-base font-medium text-white">
+                {payload.sender}
+              </p>
               <p className="mt-2 text-sm leading-relaxed text-slate-200">
                 {payload.message}
               </p>
@@ -138,7 +140,7 @@ export function OverlayPanel() {
                     key={l.label}
                     className="rounded-full bg-white/10 px-2 py-0.5 text-[11px] text-slate-100"
                   >
-                    {l.label}{' '}
+                    {l.label}{" "}
                     <span className="text-slate-400">
                       {(l.score * 100).toFixed(0)}%
                     </span>
@@ -182,5 +184,5 @@ export function OverlayPanel() {
         </div>
       </motion.div>
     </div>
-  )
+  );
 }

@@ -1,237 +1,257 @@
-'use client'
+"use client";
 
-import { useEffect, useRef, useState } from 'react'
-import { getRespondy } from '../lib/respondy-client'
+import { useEffect, useRef, useState } from "react";
+import { getRespondy } from "../lib/respondy-client";
 
-type AuthView = 'login' | 'signup'
-type AppView = 'realtime' | 'manual' | 'chat' | 'mypage' | 'help'
-type ChatStep = 'select' | 'conversation'
-type ChatRole = 'user' | 'assistant'
-type ChatBubble = { id: string; role: ChatRole; text: string; at: number }
+type AuthView = "login" | "signup";
+type AppView = "realtime" | "manual" | "chat" | "mypage" | "help";
+type ChatStep = "select" | "conversation";
+type ChatRole = "user" | "assistant";
+type ChatBubble = { id: string; role: ChatRole; text: string; at: number };
 
-type AnalysisSource = 'realtime' | 'manual'
+type AnalysisSource = "realtime" | "manual";
 type PersonProfile = {
-  id: string
-  name: string
-  birthDate: string
-  currentRelation: string
-  goalRelation: string
-  personality: string
-  notes: string
-  createdAt: number
-}
+  id: string;
+  name: string;
+  birthDate: string;
+  currentRelation: string;
+  goalRelation: string;
+  personality: string;
+  notes: string;
+  createdAt: number;
+};
 
 type AnalysisRecord = {
-  id: string
-  at: number
-  source: AnalysisSource
-  title: string
-  relation: string
-  goalRelation: string
-  situation: string
-  receivedMessage?: string
-  emotion: string
-  context: string
-  suggestions: string[]
-}
+  id: string;
+  at: number;
+  source: AnalysisSource;
+  title: string;
+  relation: string;
+  goalRelation: string;
+  situation: string;
+  receivedMessage?: string;
+  emotion: string;
+  context: string;
+  suggestions: string[];
+};
 
 const navItems: { key: AppView; label: string }[] = [
-  { key: 'realtime', label: '실시간 분석' },
-  { key: 'manual', label: '수동 입력' },
-  { key: 'chat', label: 'AI챗' },
-  { key: 'mypage', label: '마이페이지' },
-]
+  { key: "realtime", label: "실시간 분석" },
+  { key: "manual", label: "수동 입력" },
+  { key: "chat", label: "AI챗" },
+  { key: "mypage", label: "마이페이지" },
+];
 
 const CHAT_DEMO_REPLIES = [
-  '응, 그렇구나. 그다음엔 어떻게 했어?',
-  '아하, 나도 비슷한 적 있어 ㅎㅎ 너는 보통 어떻게 말해?',
-  '그 말 들으니까 이해가 돼. 상대한테는 어떻게 전하고 싶어?',
-  '좋아, 그 톤이면 괜찮을 것 같아. 한 번 더 말해볼래?',
-  '음… 그때 기분은 어땠어? 조금 더 구체적으로 말해줄 수 있어?',
-]
+  "응, 그렇구나. 그다음엔 어떻게 했어?",
+  "아하, 나도 비슷한 적 있어 ㅎㅎ 너는 보통 어떻게 말해?",
+  "그 말 들으니까 이해가 돼. 상대한테는 어떻게 전하고 싶어?",
+  "좋아, 그 톤이면 괜찮을 것 같아. 한 번 더 말해볼래?",
+  "음… 그때 기분은 어땠어? 조금 더 구체적으로 말해줄 수 있어?",
+];
 
-const AGE_GROUP_OPTIONS = ['10대', '20대', '30대', '40대', '50대', '60대 이상'] as const
+const AGE_GROUP_OPTIONS = [
+  "10대",
+  "20대",
+  "30대",
+  "40대",
+  "50대",
+  "60대 이상",
+] as const;
 
 function formatChatTime(ts: number) {
-  return new Date(ts).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })
+  return new Date(ts).toLocaleTimeString("ko-KR", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 }
 
 const REALTIME_RESULT = {
   emotion: `-설렘 + 긴장 -> "혹시..." 같은 표현에서 조심스러운 호감 드러남\n\n-설렘 + 호감 상승 -> 관심받는 느낌에 긍정적으로 반응하고있음`,
   context: `-서로 호감을 드러내는 표현법을 사용\n\n-상대 취향을 기억하는 행동 -> 호감의 간접 표현\n\n-상대의 반응이 긍정적이라 관계가 진전될 가능성 높음`,
   suggestions: [
-    '좋아~ 토요일에 만나자!',
-    '내가 자주 가는 맛집 있는데 같이 갈래?',
-    '이따가 또 연락해~',
-    '그때 봐~ 기대된다 ㅎㅎ',
+    "좋아~ 토요일에 만나자!",
+    "내가 자주 가는 맛집 있는데 같이 갈래?",
+    "이따가 또 연락해~",
+    "그때 봐~ 기대된다 ㅎㅎ",
   ],
-}
+};
 
 const MANUAL_RESULT = {
   emotion: `-기본 감정: 편안함 + 소소한 친근감\n\n-"그래~" -> 거리감 없이 부드럽게 받아주는 느낌\n\n-과제 열심히 하고 -> 부담 없는 거리 (친구처럼 한마디)\n\n-"내일 보자" -> 관계를 이어가려는 의도`,
   context: `-아직 완전 친군 아니지만 "편한 선후배"에서 "친구"로 넘어가는 중간 단계\n\n-대화가 자연스럽게 이어짐 -> "내일 보자" + 관계를 끊지 않고 이어가는 흐름`,
-  suggestions: ['네 선배도요~', '넵!!', '네 내일도 만나서 같이 과제해요~~', '선배도 내일 봐요~'],
-}
+  suggestions: [
+    "네 선배도요~",
+    "넵!!",
+    "네 내일도 만나서 같이 과제해요~~",
+    "선배도 내일 봐요~",
+  ],
+};
 
 export default function HomePage() {
-  const [authView, setAuthView] = useState<AuthView>('login')
-  const [loggedIn, setLoggedIn] = useState(false)
-  const [userName, setUserName] = useState('ABC')
-  const [profileEmail, setProfileEmail] = useState('abc@kookmin.ac.kr')
-  const [profilePassword, setProfilePassword] = useState('abc123!')
-  const [profileBirthDate, setProfileBirthDate] = useState('2001-01-01')
-  const [showProfileEditModal, setShowProfileEditModal] = useState(false)
-  const [showPasswordChangeModal, setShowPasswordChangeModal] = useState(false)
-  const [editProfileName, setEditProfileName] = useState('')
-  const [editProfileEmail, setEditProfileEmail] = useState('')
-  const [editProfileBirthDate, setEditProfileBirthDate] = useState('')
-  const [currentPasswordInput, setCurrentPasswordInput] = useState('')
-  const [newPasswordInput, setNewPasswordInput] = useState('')
-  const [confirmPasswordInput, setConfirmPasswordInput] = useState('')
-  const [passwordChangeError, setPasswordChangeError] = useState('')
-  const [selectedView, setSelectedView] = useState<AppView>('realtime')
-  const [selectedChatPerson, setSelectedChatPerson] = useState('')
-  const [chatStep, setChatStep] = useState<ChatStep>('select')
-  const [chatMessages, setChatMessages] = useState<ChatBubble[]>([])
-  const [chatDraft, setChatDraft] = useState('')
-  const [chatTyping, setChatTyping] = useState(false)
-  const chatScrollRef = useRef<HTMLDivElement>(null)
-  const demoReplyIdxRef = useRef(0)
-  const [realtimeReceivedMessage, setRealtimeReceivedMessage] = useState('')
-  const [personProfiles, setPersonProfiles] = useState<PersonProfile[]>([])
-  const [selectedRealtimePerson, setSelectedRealtimePerson] = useState('')
-  const [showPersonCreateModal, setShowPersonCreateModal] = useState(false)
-  const [newPersonName, setNewPersonName] = useState('')
-  const [newPersonBirthDate, setNewPersonBirthDate] = useState('')
-  const [newPersonCurrentRelation, setNewPersonCurrentRelation] = useState('')
-  const [newPersonGoalRelation, setNewPersonGoalRelation] = useState('')
-  const [newPersonPersonality, setNewPersonPersonality] = useState('')
-  const [newPersonNotes, setNewPersonNotes] = useState('')
-  const [selectedManualPerson, setSelectedManualPerson] = useState('')
-  const [manualSituation, setManualSituation] = useState('')
-  const [manualReceivedMessage, setManualReceivedMessage] = useState('')
-  const [showRealtimeResults, setShowRealtimeResults] = useState(false)
-  const [showManualResults, setShowManualResults] = useState(false)
-  const [isRealtimeMonitoring, setIsRealtimeMonitoring] = useState(false)
-  const [isPickingRegion, setIsPickingRegion] = useState(false)
-  const [analysisHistory, setAnalysisHistory] = useState<AnalysisRecord[]>([])
-  const [historyDetailId, setHistoryDetailId] = useState<string | null>(null)
-  const [personDetailId, setPersonDetailId] = useState<string | null>(null)
-  const [editPersonName, setEditPersonName] = useState('')
-  const [editPersonBirthDate, setEditPersonBirthDate] = useState('')
-  const [editPersonCurrentRelation, setEditPersonCurrentRelation] = useState('')
-  const [editPersonGoalRelation, setEditPersonGoalRelation] = useState('')
-  const [editPersonPersonality, setEditPersonPersonality] = useState('')
-  const [editPersonNotes, setEditPersonNotes] = useState('')
-  const [copiedSuggestionId, setCopiedSuggestionId] = useState<string | null>(null)
+  const [authView, setAuthView] = useState<AuthView>("login");
+  const [loggedIn, setLoggedIn] = useState(false);
+  const [userName, setUserName] = useState("ABC");
+  const [profileEmail, setProfileEmail] = useState("abc@kookmin.ac.kr");
+  const [profilePassword, setProfilePassword] = useState("abc123!");
+  const [profileBirthDate, setProfileBirthDate] = useState("2001-01-01");
+  const [showProfileEditModal, setShowProfileEditModal] = useState(false);
+  const [showPasswordChangeModal, setShowPasswordChangeModal] = useState(false);
+  const [editProfileName, setEditProfileName] = useState("");
+  const [editProfileEmail, setEditProfileEmail] = useState("");
+  const [editProfileBirthDate, setEditProfileBirthDate] = useState("");
+  const [currentPasswordInput, setCurrentPasswordInput] = useState("");
+  const [newPasswordInput, setNewPasswordInput] = useState("");
+  const [confirmPasswordInput, setConfirmPasswordInput] = useState("");
+  const [passwordChangeError, setPasswordChangeError] = useState("");
+  const [selectedView, setSelectedView] = useState<AppView>("realtime");
+  const [selectedChatPerson, setSelectedChatPerson] = useState("");
+  const [chatStep, setChatStep] = useState<ChatStep>("select");
+  const [chatMessages, setChatMessages] = useState<ChatBubble[]>([]);
+  const [chatDraft, setChatDraft] = useState("");
+  const [chatTyping, setChatTyping] = useState(false);
+  const chatScrollRef = useRef<HTMLDivElement>(null);
+  const demoReplyIdxRef = useRef(0);
+  const [realtimeReceivedMessage, setRealtimeReceivedMessage] = useState("");
+  const [personProfiles, setPersonProfiles] = useState<PersonProfile[]>([]);
+  const [selectedRealtimePerson, setSelectedRealtimePerson] = useState("");
+  const [showPersonCreateModal, setShowPersonCreateModal] = useState(false);
+  const [newPersonName, setNewPersonName] = useState("");
+  const [newPersonBirthDate, setNewPersonBirthDate] = useState("");
+  const [newPersonCurrentRelation, setNewPersonCurrentRelation] = useState("");
+  const [newPersonGoalRelation, setNewPersonGoalRelation] = useState("");
+  const [newPersonPersonality, setNewPersonPersonality] = useState("");
+  const [newPersonNotes, setNewPersonNotes] = useState("");
+  const [selectedManualPerson, setSelectedManualPerson] = useState("");
+  const [manualSituation, setManualSituation] = useState("");
+  const [manualReceivedMessage, setManualReceivedMessage] = useState("");
+  const [showRealtimeResults, setShowRealtimeResults] = useState(false);
+  const [showManualResults, setShowManualResults] = useState(false);
+  const [isRealtimeMonitoring, setIsRealtimeMonitoring] = useState(false);
+  const [isPickingRegion, setIsPickingRegion] = useState(false);
+  const [analysisHistory, setAnalysisHistory] = useState<AnalysisRecord[]>([]);
+  const [historyDetailId, setHistoryDetailId] = useState<string | null>(null);
+  const [personDetailId, setPersonDetailId] = useState<string | null>(null);
+  const [editPersonName, setEditPersonName] = useState("");
+  const [editPersonBirthDate, setEditPersonBirthDate] = useState("");
+  const [editPersonCurrentRelation, setEditPersonCurrentRelation] =
+    useState("");
+  const [editPersonGoalRelation, setEditPersonGoalRelation] = useState("");
+  const [editPersonPersonality, setEditPersonPersonality] = useState("");
+  const [editPersonNotes, setEditPersonNotes] = useState("");
+  const [copiedSuggestionId, setCopiedSuggestionId] = useState<string | null>(
+    null,
+  );
 
   const copySuggestion = async (text: string, id: string) => {
     try {
-      await navigator.clipboard.writeText(text)
-      setCopiedSuggestionId(id)
-      window.setTimeout(() => setCopiedSuggestionId(null), 1500)
+      await navigator.clipboard.writeText(text);
+      setCopiedSuggestionId(id);
+      window.setTimeout(() => setCopiedSuggestionId(null), 1500);
     } catch {
-      window.alert('클립보드에 복사하지 못했습니다. 브라우저 권한을 확인해 주세요.')
+      window.alert(
+        "클립보드에 복사하지 못했습니다. 브라우저 권한을 확인해 주세요.",
+      );
     }
-  }
+  };
 
   useEffect(() => {
-    if (selectedView !== 'chat') {
-      setChatStep('select')
-      setChatMessages([])
-      setChatDraft('')
-      setChatTyping(false)
-      demoReplyIdxRef.current = 0
+    if (selectedView !== "chat") {
+      setChatStep("select");
+      setChatMessages([]);
+      setChatDraft("");
+      setChatTyping(false);
+      demoReplyIdxRef.current = 0;
     }
-  }, [selectedView])
+  }, [selectedView]);
 
   useEffect(() => {
-    const el = chatScrollRef.current
-    if (!el) return
-    el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' })
-  }, [chatMessages, chatTyping, chatStep])
+    const el = chatScrollRef.current;
+    if (!el) return;
+    el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
+  }, [chatMessages, chatTyping, chatStep]);
 
   useEffect(() => {
-    if (selectedView !== 'realtime') {
-      setShowRealtimeResults(false)
-      void stopRealtimeDetection()
+    if (selectedView !== "realtime") {
+      setShowRealtimeResults(false);
+      void stopRealtimeDetection();
     }
-  }, [selectedView])
+  }, [selectedView]);
 
   useEffect(() => {
-    if (selectedView !== 'manual') setShowManualResults(false)
-  }, [selectedView])
+    if (selectedView !== "manual") setShowManualResults(false);
+  }, [selectedView]);
 
   useEffect(() => {
-    const respondy = getRespondy()
-    if (!respondy) return
+    const respondy = getRespondy();
+    if (!respondy) return;
     void respondy
       .getRealtimeDetectionState()
       .then((state) => setIsRealtimeMonitoring(Boolean(state?.active)))
-      .catch(() => {})
-  }, [])
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     return () => {
-      void getRespondy()?.stopRealtimeDetection()
-    }
-  }, [])
+      void getRespondy()?.stopRealtimeDetection();
+    };
+  }, []);
 
   useEffect(() => {
-    setHistoryDetailId(null)
-    setPersonDetailId(null)
-  }, [selectedView])
+    setHistoryDetailId(null);
+    setPersonDetailId(null);
+  }, [selectedView]);
 
   useEffect(() => {
-    if (!historyDetailId) return
+    if (!historyDetailId) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setHistoryDetailId(null)
-    }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [historyDetailId])
+      if (e.key === "Escape") setHistoryDetailId(null);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [historyDetailId]);
 
   const finishAuth = (opts?: { displayName?: string }) => {
     if (opts?.displayName?.trim()) {
-      setUserName(opts.displayName.trim())
+      setUserName(opts.displayName.trim());
     }
-    setRealtimeReceivedMessage('')
-    setPersonProfiles([])
-    setSelectedRealtimePerson('')
-    setSelectedChatPerson('')
-    setShowPersonCreateModal(false)
-    setNewPersonName('')
-    setNewPersonBirthDate('')
-    setNewPersonCurrentRelation('')
-    setNewPersonGoalRelation('')
-    setNewPersonPersonality('')
-    setNewPersonNotes('')
-    setShowRealtimeResults(false)
-    setIsRealtimeMonitoring(false)
-    setSelectedManualPerson('')
-    setManualSituation('')
-    setManualReceivedMessage('')
-    setShowManualResults(false)
-    setLoggedIn(true)
-    setSelectedView('realtime')
-  }
+    setRealtimeReceivedMessage("");
+    setPersonProfiles([]);
+    setSelectedRealtimePerson("");
+    setSelectedChatPerson("");
+    setShowPersonCreateModal(false);
+    setNewPersonName("");
+    setNewPersonBirthDate("");
+    setNewPersonCurrentRelation("");
+    setNewPersonGoalRelation("");
+    setNewPersonPersonality("");
+    setNewPersonNotes("");
+    setShowRealtimeResults(false);
+    setIsRealtimeMonitoring(false);
+    setSelectedManualPerson("");
+    setManualSituation("");
+    setManualReceivedMessage("");
+    setShowManualResults(false);
+    setLoggedIn(true);
+    setSelectedView("realtime");
+  };
 
   const handleLoginSubmit = (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault()
-    finishAuth()
-  }
+    event.preventDefault();
+    finishAuth();
+  };
 
   const handleSignupSubmit = (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault()
-    const form = event.currentTarget
-    const nameField = form.elements.namedItem('signup-name')
+    event.preventDefault();
+    const form = event.currentTarget;
+    const nameField = form.elements.namedItem("signup-name");
     const displayName =
-      nameField instanceof HTMLInputElement ? nameField.value : undefined
-    finishAuth({ displayName })
-  }
+      nameField instanceof HTMLInputElement ? nameField.value : undefined;
+    finishAuth({ displayName });
+  };
 
   const renderAuthCard = () => {
-    if (authView === 'signup') {
+    if (authView === "signup") {
       return (
         <form
           key="signup"
@@ -272,21 +292,25 @@ export default function HomePage() {
             회원가입
           </button>
           <p className="respondy-helper-text respondy-helper-text--compact">
-            이미 계정이 있으신가요?{' '}
+            이미 계정이 있으신가요?{" "}
             <button
               type="button"
               className="respondy-link-btn"
-              onClick={() => setAuthView('login')}
+              onClick={() => setAuthView("login")}
             >
               로그인
             </button>
           </p>
         </form>
-      )
+      );
     }
 
     return (
-      <form key="login" className="respondy-card respondy-auth-card" onSubmit={handleLoginSubmit}>
+      <form
+        key="login"
+        className="respondy-card respondy-auth-card"
+        onSubmit={handleLoginSubmit}
+      >
         <h2 className="respondy-title">로그인</h2>
         <label className="respondy-label" htmlFor="login-email">
           이메일 주소
@@ -312,70 +336,70 @@ export default function HomePage() {
           로그인
         </button>
         <p className="respondy-helper-text">
-          계정이 없으신가요?{' '}
+          계정이 없으신가요?{" "}
           <button
             type="button"
             className="respondy-link-btn"
-            onClick={() => setAuthView('signup')}
+            onClick={() => setAuthView("signup")}
           >
             회원가입
           </button>
         </p>
       </form>
-    )
-  }
+    );
+  };
 
-  const clearRealtimeResults = () => setShowRealtimeResults(false)
-  const clearManualResults = () => setShowManualResults(false)
+  const clearRealtimeResults = () => setShowRealtimeResults(false);
+  const clearManualResults = () => setShowManualResults(false);
 
   const startRealtimeDetection = async (): Promise<boolean> => {
-    const respondy = getRespondy()
+    const respondy = getRespondy();
     if (!respondy) {
-      window.alert('Electron 환경에서만 실시간 감지를 시작할 수 있습니다.')
-      return false
+      window.alert("Electron 환경에서만 실시간 감지를 시작할 수 있습니다.");
+      return false;
     }
     try {
-      await respondy.startRealtimeDetection()
-      setIsRealtimeMonitoring(true)
-      return true
+      await respondy.startRealtimeDetection();
+      setIsRealtimeMonitoring(true);
+      return true;
     } catch (e) {
       const message =
-        e instanceof Error ? e.message : '실시간 감지를 시작하지 못했습니다.'
-      window.alert(message)
-      return false
+        e instanceof Error ? e.message : "실시간 감지를 시작하지 못했습니다.";
+      window.alert(message);
+      return false;
     }
-  }
+  };
 
   const stopRealtimeDetection = async () => {
-    const respondy = getRespondy()
+    const respondy = getRespondy();
     try {
-      await respondy?.stopRealtimeDetection()
+      await respondy?.stopRealtimeDetection();
     } catch {
       // ignore stop race during view transitions
     } finally {
-      setIsRealtimeMonitoring(false)
+      setIsRealtimeMonitoring(false);
     }
-  }
+  };
 
   const handleRealtimeMonitoringToggle = async () => {
     if (isRealtimeMonitoring) {
-      await stopRealtimeDetection()
-      return
+      await stopRealtimeDetection();
+      return;
     }
 
-    const started = await startRealtimeDetection()
-    if (!started) return
+    const started = await startRealtimeDetection();
+    if (!started) return;
 
-    if (!realtimeFormReady) return
-    const id = `rt-${Date.now()}`
+    if (!realtimeFormReady) return;
+    const id = `rt-${Date.now()}`;
     setAnalysisHistory((h) => [
       {
         id,
         at: Date.now(),
-        source: 'realtime',
+        source: "realtime",
         title: `${selectedRealtimePerson.trim()}와의 실시간 대화`,
-        relation: selectedRealtimeProfile?.currentRelation?.trim() || '—',
-        goalRelation: selectedRealtimeProfile?.goalRelation?.trim() || '—',
+        relation: selectedRealtimeProfile?.currentRelation?.trim() || "—",
+        goalRelation: selectedRealtimeProfile?.goalRelation?.trim() || "—",
         situation: realtimeReceivedMessage.trim(),
         receivedMessage: realtimeReceivedMessage.trim(),
         emotion: REALTIME_RESULT.emotion,
@@ -383,168 +407,197 @@ export default function HomePage() {
         suggestions: [...REALTIME_RESULT.suggestions],
       },
       ...h,
-    ])
-    setShowRealtimeResults(true)
-  }
+    ]);
+    setShowRealtimeResults(true);
+  };
 
   const pickRealtimeRegion = async () => {
-    const respondy = getRespondy()
+    const respondy = getRespondy();
     if (!respondy) {
-      window.alert('Electron 환경에서만 영역 선택을 사용할 수 있습니다.')
-      return
+      window.alert("Electron 환경에서만 영역 선택을 사용할 수 있습니다.");
+      return;
     }
     try {
-      setIsPickingRegion(true)
-      const picked = await respondy.pickOcrRegion()
-      if (!picked) return
+      setIsPickingRegion(true);
+      const picked = await respondy.pickOcrRegion();
+      if (!picked) return;
       window.alert(
         `영역 설정 완료: x=${picked.x}, y=${picked.y}, w=${picked.width}, h=${picked.height}`,
-      )
+      );
     } catch (e) {
       const message =
-        e instanceof Error ? e.message : '영역 선택 중 오류가 발생했습니다.'
-      window.alert(message)
+        e instanceof Error ? e.message : "영역 선택 중 오류가 발생했습니다.";
+      window.alert(message);
     } finally {
-      setIsPickingRegion(false)
+      setIsPickingRegion(false);
     }
-  }
+  };
 
   const realtimeFormReady =
-    selectedRealtimePerson.trim() && realtimeReceivedMessage.trim()
+    selectedRealtimePerson.trim() && realtimeReceivedMessage.trim();
 
   const manualFormReady =
-    selectedManualPerson.trim() && manualSituation.trim() && manualReceivedMessage.trim()
-  const selectedRealtimeProfile = personProfiles.find((person) => person.name === selectedRealtimePerson)
-  const selectedManualProfile = personProfiles.find((person) => person.name === selectedManualPerson)
+    selectedManualPerson.trim() &&
+    manualSituation.trim() &&
+    manualReceivedMessage.trim();
+  const selectedRealtimeProfile = personProfiles.find(
+    (person) => person.name === selectedRealtimePerson,
+  );
+  const selectedManualProfile = personProfiles.find(
+    (person) => person.name === selectedManualPerson,
+  );
 
-  const selectedChatProfile = personProfiles.find((person) => person.name === selectedChatPerson)
-  const chatRelationLabel = selectedChatPerson.trim() || '인물 미선택'
+  const selectedChatProfile = personProfiles.find(
+    (person) => person.name === selectedChatPerson,
+  );
+  const chatRelationLabel = selectedChatPerson.trim() || "인물 미선택";
 
   const startChatSession = () => {
-    if (!selectedChatPerson.trim()) return
-    demoReplyIdxRef.current = 0
+    if (!selectedChatPerson.trim()) return;
+    demoReplyIdxRef.current = 0;
     const relationHint = selectedChatProfile?.currentRelation
       ? `${selectedChatProfile.currentRelation} 관계로 `
-      : ''
-    const openingText = `${selectedChatPerson.trim()}님과 ${relationHint}대화를 연습해보자. 편하게 시작해줘!`
-    setChatStep('conversation')
+      : "";
+    const openingText = `${selectedChatPerson.trim()}님과 ${relationHint}대화를 연습해보자. 편하게 시작해줘!`;
+    setChatStep("conversation");
     setChatMessages([
       {
         id: `open-${Date.now()}`,
-        role: 'assistant',
+        role: "assistant",
         text: openingText,
         at: Date.now(),
       },
-    ])
-    setChatDraft('')
-    setChatTyping(false)
-  }
+    ]);
+    setChatDraft("");
+    setChatTyping(false);
+  };
 
   const leaveChatConversation = () => {
-    setChatStep('select')
-    setChatMessages([])
-    setChatDraft('')
-    setChatTyping(false)
-    demoReplyIdxRef.current = 0
-  }
+    setChatStep("select");
+    setChatMessages([]);
+    setChatDraft("");
+    setChatTyping(false);
+    demoReplyIdxRef.current = 0;
+  };
 
   const sendChatMessage = () => {
-    const text = chatDraft.trim()
-    if (!text || chatTyping) return
-    setChatMessages((m) => [...m, { id: `u-${Date.now()}`, role: 'user', text, at: Date.now() }])
-    setChatDraft('')
-    setChatTyping(true)
-    window.setTimeout(() => {
-      const reply = CHAT_DEMO_REPLIES[demoReplyIdxRef.current % CHAT_DEMO_REPLIES.length] ?? ''
-      demoReplyIdxRef.current += 1
-      setChatMessages((m) => [
-        ...m,
-        { id: `a-${Date.now()}`, role: 'assistant', text: reply, at: Date.now() },
-      ])
-      setChatTyping(false)
-    }, 550 + Math.random() * 450)
-  }
+    const text = chatDraft.trim();
+    if (!text || chatTyping) return;
+    setChatMessages((m) => [
+      ...m,
+      { id: `u-${Date.now()}`, role: "user", text, at: Date.now() },
+    ]);
+    setChatDraft("");
+    setChatTyping(true);
+    window.setTimeout(
+      () => {
+        const reply =
+          CHAT_DEMO_REPLIES[
+            demoReplyIdxRef.current % CHAT_DEMO_REPLIES.length
+          ] ?? "";
+        demoReplyIdxRef.current += 1;
+        setChatMessages((m) => [
+          ...m,
+          {
+            id: `a-${Date.now()}`,
+            role: "assistant",
+            text: reply,
+            at: Date.now(),
+          },
+        ]);
+        setChatTyping(false);
+      },
+      550 + Math.random() * 450,
+    );
+  };
 
   const closePersonCreateModal = () => {
-    setShowPersonCreateModal(false)
-    setNewPersonName('')
-    setNewPersonBirthDate('')
-    setNewPersonCurrentRelation('')
-    setNewPersonGoalRelation('')
-    setNewPersonPersonality('')
-    setNewPersonNotes('')
-  }
+    setShowPersonCreateModal(false);
+    setNewPersonName("");
+    setNewPersonBirthDate("");
+    setNewPersonCurrentRelation("");
+    setNewPersonGoalRelation("");
+    setNewPersonPersonality("");
+    setNewPersonNotes("");
+  };
 
   const openProfileEditModal = () => {
-    setEditProfileName(userName)
-    setEditProfileEmail(profileEmail)
-    setEditProfileBirthDate(profileBirthDate)
-    setShowProfileEditModal(true)
-  }
+    setEditProfileName(userName);
+    setEditProfileEmail(profileEmail);
+    setEditProfileBirthDate(profileBirthDate);
+    setShowProfileEditModal(true);
+  };
 
   const closeProfileEditModal = () => {
-    setShowProfileEditModal(false)
-    setEditProfileName('')
-    setEditProfileEmail('')
-    setEditProfileBirthDate('')
-  }
+    setShowProfileEditModal(false);
+    setEditProfileName("");
+    setEditProfileEmail("");
+    setEditProfileBirthDate("");
+  };
 
   const openPasswordChangeModal = () => {
-    setCurrentPasswordInput('')
-    setNewPasswordInput('')
-    setConfirmPasswordInput('')
-    setPasswordChangeError('')
-    setShowPasswordChangeModal(true)
-  }
+    setCurrentPasswordInput("");
+    setNewPasswordInput("");
+    setConfirmPasswordInput("");
+    setPasswordChangeError("");
+    setShowPasswordChangeModal(true);
+  };
 
   const closePasswordChangeModal = () => {
-    setShowPasswordChangeModal(false)
-    setCurrentPasswordInput('')
-    setNewPasswordInput('')
-    setConfirmPasswordInput('')
-    setPasswordChangeError('')
-  }
+    setShowPasswordChangeModal(false);
+    setCurrentPasswordInput("");
+    setNewPasswordInput("");
+    setConfirmPasswordInput("");
+    setPasswordChangeError("");
+  };
 
   const saveProfile = () => {
-    const nextName = editProfileName.trim()
-    const nextEmail = editProfileEmail.trim()
-    if (!nextName || !nextEmail) return
-    setUserName(nextName)
-    setProfileEmail(nextEmail)
-    setProfileBirthDate(editProfileBirthDate)
-    closeProfileEditModal()
-  }
+    const nextName = editProfileName.trim();
+    const nextEmail = editProfileEmail.trim();
+    if (!nextName || !nextEmail) return;
+    setUserName(nextName);
+    setProfileEmail(nextEmail);
+    setProfileBirthDate(editProfileBirthDate);
+    closeProfileEditModal();
+  };
 
   const saveChangedPassword = () => {
-    if (!currentPasswordInput || !newPasswordInput || !confirmPasswordInput) return
+    if (!currentPasswordInput || !newPasswordInput || !confirmPasswordInput)
+      return;
     if (currentPasswordInput !== profilePassword) {
-      setPasswordChangeError('현재 비밀번호가 올바르지 않습니다.')
-      return
+      setPasswordChangeError("현재 비밀번호가 올바르지 않습니다.");
+      return;
     }
     if (newPasswordInput !== confirmPasswordInput) {
-      setPasswordChangeError('새 비밀번호와 확인 비밀번호가 일치하지 않습니다.')
-      return
+      setPasswordChangeError(
+        "새 비밀번호와 확인 비밀번호가 일치하지 않습니다.",
+      );
+      return;
     }
     if (newPasswordInput === profilePassword) {
-      setPasswordChangeError('새 비밀번호는 현재 비밀번호와 다르게 입력해 주세요.')
-      return
+      setPasswordChangeError(
+        "새 비밀번호는 현재 비밀번호와 다르게 입력해 주세요.",
+      );
+      return;
     }
 
-    setProfilePassword(newPasswordInput)
-    closePasswordChangeModal()
-    window.alert('비밀번호가 변경되었습니다.')
-  }
+    setProfilePassword(newPasswordInput);
+    closePasswordChangeModal();
+    window.alert("비밀번호가 변경되었습니다.");
+  };
 
   const createPersonProfile = () => {
-    const personName = newPersonName.trim()
-    if (!personName) return
-    const existingPerson = personProfiles.find((person) => person.name === personName)
+    const personName = newPersonName.trim();
+    if (!personName) return;
+    const existingPerson = personProfiles.find(
+      (person) => person.name === personName,
+    );
     if (existingPerson) {
-      setSelectedRealtimePerson(existingPerson.name)
-      setSelectedManualPerson(existingPerson.name)
-      setSelectedChatPerson(existingPerson.name)
-      closePersonCreateModal()
-      return
+      setSelectedRealtimePerson(existingPerson.name);
+      setSelectedManualPerson(existingPerson.name);
+      setSelectedChatPerson(existingPerson.name);
+      closePersonCreateModal();
+      return;
     }
     setPersonProfiles((prev) => [
       ...prev,
@@ -558,42 +611,44 @@ export default function HomePage() {
         notes: newPersonNotes.trim(),
         createdAt: Date.now(),
       },
-    ])
-    setSelectedRealtimePerson(personName)
-    setSelectedManualPerson(personName)
-    setSelectedChatPerson(personName)
-    closePersonCreateModal()
-    clearRealtimeResults()
-  }
+    ]);
+    setSelectedRealtimePerson(personName);
+    setSelectedManualPerson(personName);
+    setSelectedChatPerson(personName);
+    closePersonCreateModal();
+    clearRealtimeResults();
+  };
 
   const openPersonDetailModal = (person: PersonProfile) => {
-    setPersonDetailId(person.id)
-    setEditPersonName(person.name)
-    setEditPersonBirthDate(person.birthDate)
-    setEditPersonCurrentRelation(person.currentRelation)
-    setEditPersonGoalRelation(person.goalRelation)
-    setEditPersonPersonality(person.personality)
-    setEditPersonNotes(person.notes)
-  }
+    setPersonDetailId(person.id);
+    setEditPersonName(person.name);
+    setEditPersonBirthDate(person.birthDate);
+    setEditPersonCurrentRelation(person.currentRelation);
+    setEditPersonGoalRelation(person.goalRelation);
+    setEditPersonPersonality(person.personality);
+    setEditPersonNotes(person.notes);
+  };
 
   const closePersonDetailModal = () => {
-    setPersonDetailId(null)
-    setEditPersonName('')
-    setEditPersonBirthDate('')
-    setEditPersonCurrentRelation('')
-    setEditPersonGoalRelation('')
-    setEditPersonPersonality('')
-    setEditPersonNotes('')
-  }
+    setPersonDetailId(null);
+    setEditPersonName("");
+    setEditPersonBirthDate("");
+    setEditPersonCurrentRelation("");
+    setEditPersonGoalRelation("");
+    setEditPersonPersonality("");
+    setEditPersonNotes("");
+  };
 
   const savePersonDetail = () => {
-    if (!personDetailId) return
-    const nextName = editPersonName.trim()
-    if (!nextName) return
-    const originalPerson = personProfiles.find((person) => person.id === personDetailId)
-    if (!originalPerson) return
+    if (!personDetailId) return;
+    const nextName = editPersonName.trim();
+    if (!nextName) return;
+    const originalPerson = personProfiles.find(
+      (person) => person.id === personDetailId,
+    );
+    if (!originalPerson) return;
 
-    const prevName = originalPerson.name
+    const prevName = originalPerson.name;
     setPersonProfiles((prev) =>
       prev.map((person) =>
         person.id === personDetailId
@@ -608,30 +663,35 @@ export default function HomePage() {
             }
           : person,
       ),
-    )
+    );
 
-    if (selectedRealtimePerson === prevName) setSelectedRealtimePerson(nextName)
-    if (selectedManualPerson === prevName) setSelectedManualPerson(nextName)
-    if (selectedChatPerson === prevName) setSelectedChatPerson(nextName)
-    closePersonDetailModal()
-  }
+    if (selectedRealtimePerson === prevName)
+      setSelectedRealtimePerson(nextName);
+    if (selectedManualPerson === prevName) setSelectedManualPerson(nextName);
+    if (selectedChatPerson === prevName) setSelectedChatPerson(nextName);
+    closePersonDetailModal();
+  };
 
   const removeAnalysisRecord = (recordId: string) => {
-    if (!window.confirm('삭제하시겠습니까?')) return
-    setAnalysisHistory((prev) => prev.filter((record) => record.id !== recordId))
-    if (historyDetailId === recordId) setHistoryDetailId(null)
-  }
+    if (!window.confirm("삭제하시겠습니까?")) return;
+    setAnalysisHistory((prev) =>
+      prev.filter((record) => record.id !== recordId),
+    );
+    if (historyDetailId === recordId) setHistoryDetailId(null);
+  };
 
   const removePersonProfile = (personId: string) => {
-    if (!window.confirm('삭제하시겠습니까?')) return
-    const target = personProfiles.find((person) => person.id === personId)
-    if (!target) return
-    setPersonProfiles((prev) => prev.filter((person) => person.id !== personId))
-    if (selectedRealtimePerson === target.name) setSelectedRealtimePerson('')
-    if (selectedManualPerson === target.name) setSelectedManualPerson('')
-    if (selectedChatPerson === target.name) setSelectedChatPerson('')
-    if (personDetailId === personId) closePersonDetailModal()
-  }
+    if (!window.confirm("삭제하시겠습니까?")) return;
+    const target = personProfiles.find((person) => person.id === personId);
+    if (!target) return;
+    setPersonProfiles((prev) =>
+      prev.filter((person) => person.id !== personId),
+    );
+    if (selectedRealtimePerson === target.name) setSelectedRealtimePerson("");
+    if (selectedManualPerson === target.name) setSelectedManualPerson("");
+    if (selectedChatPerson === target.name) setSelectedChatPerson("");
+    if (personDetailId === personId) closePersonDetailModal();
+  };
 
   const renderRealtimeView = () => (
     <section className="respondy-three-column">
@@ -646,8 +706,8 @@ export default function HomePage() {
             className="respondy-input respondy-select"
             value={selectedRealtimePerson}
             onChange={(e) => {
-              setSelectedRealtimePerson(e.target.value)
-              clearRealtimeResults()
+              setSelectedRealtimePerson(e.target.value);
+              clearRealtimeResults();
             }}
           >
             <option value="">인물을 선택하세요</option>
@@ -669,7 +729,8 @@ export default function HomePage() {
         </div>
         {personProfiles.length === 0 && (
           <p className="respondy-helper-text respondy-helper-text--inline">
-            등록된 인물이 없습니다. <strong>+</strong> 버튼으로 인물을 먼저 만들어 주세요.
+            등록된 인물이 없습니다. <strong>+</strong> 버튼으로 인물을 먼저
+            만들어 주세요.
           </p>
         )}
         <label className="respondy-label">상황 설명</label>
@@ -677,18 +738,18 @@ export default function HomePage() {
           className="respondy-textarea"
           value={realtimeReceivedMessage}
           onChange={(e) => {
-            setRealtimeReceivedMessage(e.target.value)
-            clearRealtimeResults()
+            setRealtimeReceivedMessage(e.target.value);
+            clearRealtimeResults();
           }}
           placeholder="분석할 상황을 입력하세요"
           autoComplete="off"
         />
         <button
-          className={`respondy-primary-btn ${isRealtimeMonitoring ? 'respondy-danger-btn' : ''}`}
+          className={`respondy-primary-btn ${isRealtimeMonitoring ? "respondy-danger-btn" : ""}`}
           type="button"
           onClick={() => void handleRealtimeMonitoringToggle()}
         >
-          {isRealtimeMonitoring ? '종료하기' : '실시간 감지 시작'}
+          {isRealtimeMonitoring ? "종료하기" : "실시간 감지 시작"}
         </button>
         <button
           className="respondy-primary-btn respondy-secondary-btn mt-2 sm:mt-3"
@@ -696,7 +757,7 @@ export default function HomePage() {
           onClick={() => void pickRealtimeRegion()}
           disabled={isPickingRegion}
         >
-          {isPickingRegion ? '영역 선택 중...' : '화면에서 OCR 영역 선택'}
+          {isPickingRegion ? "영역 선택 중..." : "화면에서 OCR 영역 선택"}
         </button>
       </article>
 
@@ -704,16 +765,16 @@ export default function HomePage() {
         <h3 className="respondy-card-title">AI 분석 결과</h3>
         <label className="respondy-label">감정 분석</label>
         <textarea
-          className={`respondy-textarea respondy-readonly-area respondy-output-area ${showRealtimeResults ? '' : 'respondy-output-pending'}`}
+          className={`respondy-textarea respondy-readonly-area respondy-output-area ${showRealtimeResults ? "" : "respondy-output-pending"}`}
           readOnly
-          value={showRealtimeResults ? REALTIME_RESULT.emotion : ''}
+          value={showRealtimeResults ? REALTIME_RESULT.emotion : ""}
           placeholder="왼쪽 패널을 모두 입력한 뒤 실시간 감지 시작을 누르면 표시됩니다"
         />
         <label className="respondy-label">맥락 해석</label>
         <textarea
-          className={`respondy-textarea respondy-readonly-area respondy-output-area ${showRealtimeResults ? '' : 'respondy-output-pending'}`}
+          className={`respondy-textarea respondy-readonly-area respondy-output-area ${showRealtimeResults ? "" : "respondy-output-pending"}`}
           readOnly
-          value={showRealtimeResults ? REALTIME_RESULT.context : ''}
+          value={showRealtimeResults ? REALTIME_RESULT.context : ""}
           placeholder="왼쪽 패널을 모두 입력한 뒤 실시간 감지 시작을 누르면 표시됩니다"
         />
       </article>
@@ -723,7 +784,7 @@ export default function HomePage() {
         {showRealtimeResults ? (
           <div className="respondy-suggestions-body">
             {REALTIME_RESULT.suggestions.map((message, index) => {
-              const copyId = `realtime-${index}`
+              const copyId = `realtime-${index}`;
               return (
                 <div key={message} className="respondy-suggestion">
                   <div className="respondy-readonly-box">{message}</div>
@@ -732,18 +793,20 @@ export default function HomePage() {
                     type="button"
                     onClick={() => void copySuggestion(message, copyId)}
                   >
-                    {copiedSuggestionId === copyId ? '복사됨' : '복사하기'}
+                    {copiedSuggestionId === copyId ? "복사됨" : "복사하기"}
                   </button>
                 </div>
-              )
+              );
             })}
           </div>
         ) : (
-          <p className="respondy-output-empty">분석 후 추천 답장이 여기에 표시됩니다.</p>
+          <p className="respondy-output-empty">
+            분석 후 추천 답장이 여기에 표시됩니다.
+          </p>
         )}
       </article>
     </section>
-  )
+  );
 
   const renderManualView = () => (
     <section className="respondy-three-column">
@@ -758,8 +821,8 @@ export default function HomePage() {
             className="respondy-input respondy-select"
             value={selectedManualPerson}
             onChange={(e) => {
-              setSelectedManualPerson(e.target.value)
-              clearManualResults()
+              setSelectedManualPerson(e.target.value);
+              clearManualResults();
             }}
           >
             <option value="">인물을 선택하세요</option>
@@ -781,7 +844,8 @@ export default function HomePage() {
         </div>
         {personProfiles.length === 0 && (
           <p className="respondy-helper-text respondy-helper-text--inline">
-            등록된 인물이 없습니다. <strong>+</strong> 버튼으로 인물을 먼저 만들어 주세요.
+            등록된 인물이 없습니다. <strong>+</strong> 버튼으로 인물을 먼저
+            만들어 주세요.
           </p>
         )}
         <label className="respondy-label">상황 설명</label>
@@ -789,8 +853,8 @@ export default function HomePage() {
           className="respondy-textarea"
           value={manualSituation}
           onChange={(e) => {
-            setManualSituation(e.target.value)
-            clearManualResults()
+            setManualSituation(e.target.value);
+            clearManualResults();
           }}
           placeholder="상황을 입력하세요"
         />
@@ -799,8 +863,8 @@ export default function HomePage() {
           className="respondy-textarea"
           value={manualReceivedMessage}
           onChange={(e) => {
-            setManualReceivedMessage(e.target.value)
-            clearManualResults()
+            setManualReceivedMessage(e.target.value);
+            clearManualResults();
           }}
           placeholder="답장이 필요한 상대 메시지를 입력하세요"
         />
@@ -808,16 +872,17 @@ export default function HomePage() {
           className="respondy-primary-btn"
           type="button"
           onClick={() => {
-            if (!manualFormReady) return
-            const id = `mn-${Date.now()}`
+            if (!manualFormReady) return;
+            const id = `mn-${Date.now()}`;
             setAnalysisHistory((h) => [
               {
                 id,
                 at: Date.now(),
-                source: 'manual',
+                source: "manual",
                 title: `${selectedManualPerson.trim()}와의 수동 입력 대화`,
-                relation: selectedManualProfile?.currentRelation?.trim() || '—',
-                goalRelation: selectedManualProfile?.goalRelation?.trim() || '—',
+                relation: selectedManualProfile?.currentRelation?.trim() || "—",
+                goalRelation:
+                  selectedManualProfile?.goalRelation?.trim() || "—",
                 situation: manualSituation.trim(),
                 receivedMessage: manualReceivedMessage.trim(),
                 emotion: MANUAL_RESULT.emotion,
@@ -825,8 +890,8 @@ export default function HomePage() {
                 suggestions: [...MANUAL_RESULT.suggestions],
               },
               ...h,
-            ])
-            setShowManualResults(true)
+            ]);
+            setShowManualResults(true);
           }}
         >
           AI 분석 시작
@@ -837,16 +902,16 @@ export default function HomePage() {
         <h3 className="respondy-card-title">AI 분석 결과</h3>
         <label className="respondy-label">감정 분석</label>
         <textarea
-          className={`respondy-textarea respondy-readonly-area respondy-output-area ${showManualResults ? '' : 'respondy-output-pending'}`}
+          className={`respondy-textarea respondy-readonly-area respondy-output-area ${showManualResults ? "" : "respondy-output-pending"}`}
           readOnly
-          value={showManualResults ? MANUAL_RESULT.emotion : ''}
+          value={showManualResults ? MANUAL_RESULT.emotion : ""}
           placeholder="왼쪽 패널을 모두 입력한 뒤 AI 분석 시작을 누르면 표시됩니다"
         />
         <label className="respondy-label">맥락 해석</label>
         <textarea
-          className={`respondy-textarea respondy-readonly-area respondy-output-area ${showManualResults ? '' : 'respondy-output-pending'}`}
+          className={`respondy-textarea respondy-readonly-area respondy-output-area ${showManualResults ? "" : "respondy-output-pending"}`}
           readOnly
-          value={showManualResults ? MANUAL_RESULT.context : ''}
+          value={showManualResults ? MANUAL_RESULT.context : ""}
           placeholder="왼쪽 패널을 모두 입력한 뒤 AI 분석 시작을 누르면 표시됩니다"
         />
       </article>
@@ -856,7 +921,7 @@ export default function HomePage() {
         {showManualResults ? (
           <div className="respondy-suggestions-body">
             {MANUAL_RESULT.suggestions.map((message, index) => {
-              const copyId = `manual-${index}`
+              const copyId = `manual-${index}`;
               return (
                 <div key={message} className="respondy-suggestion">
                   <div className="respondy-readonly-box">{message}</div>
@@ -865,25 +930,29 @@ export default function HomePage() {
                     type="button"
                     onClick={() => void copySuggestion(message, copyId)}
                   >
-                    {copiedSuggestionId === copyId ? '복사됨' : '복사하기'}
+                    {copiedSuggestionId === copyId ? "복사됨" : "복사하기"}
                   </button>
                 </div>
-              )
+              );
             })}
           </div>
         ) : (
-          <p className="respondy-output-empty">분석 후 추천 답장이 여기에 표시됩니다.</p>
+          <p className="respondy-output-empty">
+            분석 후 추천 답장이 여기에 표시됩니다.
+          </p>
         )}
       </article>
     </section>
-  )
+  );
 
   const renderChatView = () => {
-    if (chatStep === 'select') {
+    if (chatStep === "select") {
       return (
         <section className="respondy-single-wrap">
           <article className="respondy-card respondy-chat-select-card">
-            <h2 className="respondy-title respondy-title--card">AI 대화 연습</h2>
+            <h2 className="respondy-title respondy-title--card">
+              AI 대화 연습
+            </h2>
             <p className="respondy-section-label">인물 선택</p>
             <div className="respondy-inline-row">
               <select
@@ -911,7 +980,8 @@ export default function HomePage() {
             </div>
             {personProfiles.length === 0 && (
               <p className="respondy-helper-text respondy-helper-text--inline">
-                등록된 인물이 없습니다. <strong>+</strong> 버튼으로 인물을 먼저 만들어 주세요.
+                등록된 인물이 없습니다. <strong>+</strong> 버튼으로 인물을 먼저
+                만들어 주세요.
               </p>
             )}
             <button
@@ -924,7 +994,7 @@ export default function HomePage() {
             </button>
           </article>
         </section>
-      )
+      );
     }
 
     return (
@@ -938,7 +1008,13 @@ export default function HomePage() {
                 onClick={leaveChatConversation}
                 aria-label="인물 선택으로 돌아가기"
               >
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden>
+                <svg
+                  width="20"
+                  height="20"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  aria-hidden
+                >
                   <path
                     d="M15 18l-6-6 6-6"
                     stroke="currentColor"
@@ -951,8 +1027,11 @@ export default function HomePage() {
               <div>
                 <p className="respondy-chat-messenger-name">AI 대화 파트너</p>
                 <p className="respondy-chat-messenger-sub">
-                  연습 모드 ·{' '}
-                  <span className="respondy-chat-relation-badge" title={chatRelationLabel}>
+                  연습 모드 ·{" "}
+                  <span
+                    className="respondy-chat-relation-badge"
+                    title={chatRelationLabel}
+                  >
                     {chatRelationLabel}
                   </span>
                 </p>
@@ -966,14 +1045,16 @@ export default function HomePage() {
               <span>오늘</span>
             </div>
             {chatMessages.map((msg) =>
-              msg.role === 'assistant' ? (
+              msg.role === "assistant" ? (
                 <div key={msg.id} className="respondy-chat-msg-ai">
                   <div className="respondy-chat-avatar-ai" aria-hidden>
                     AI
                   </div>
                   <div className="respondy-chat-ai-col">
                     <div className="respondy-chat-bubble-ai">{msg.text}</div>
-                    <span className="respondy-chat-meta">{formatChatTime(msg.at)}</span>
+                    <span className="respondy-chat-meta">
+                      {formatChatTime(msg.at)}
+                    </span>
                   </div>
                 </div>
               ) : (
@@ -987,7 +1068,10 @@ export default function HomePage() {
             )}
             {chatTyping && (
               <div className="respondy-chat-msg-ai">
-                <div className="respondy-chat-avatar-ai respondy-chat-avatar-ai--typing" aria-hidden>
+                <div
+                  className="respondy-chat-avatar-ai respondy-chat-avatar-ai--typing"
+                  aria-hidden
+                >
                   AI
                 </div>
                 <div className="respondy-chat-typing-bubble" aria-live="polite">
@@ -1006,9 +1090,9 @@ export default function HomePage() {
                 value={chatDraft}
                 onChange={(e) => setChatDraft(e.target.value)}
                 onKeyDown={(e) => {
-                  if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault()
-                    sendChatMessage()
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    sendChatMessage();
                   }
                 }}
                 placeholder="메시지를 입력하세요…"
@@ -1022,7 +1106,13 @@ export default function HomePage() {
                 disabled={!chatDraft.trim() || chatTyping}
                 aria-label="메시지 전송"
               >
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden>
+                <svg
+                  width="20"
+                  height="20"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  aria-hidden
+                >
                   <path
                     d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"
                     stroke="currentColor"
@@ -1033,12 +1123,14 @@ export default function HomePage() {
                 </svg>
               </button>
             </div>
-            <p className="respondy-chat-composer-hint">Enter로 전송 · Shift+Enter로 줄 바꿈</p>
+            <p className="respondy-chat-composer-hint">
+              Enter로 전송 · Shift+Enter로 줄 바꿈
+            </p>
           </footer>
         </div>
       </section>
-    )
-  }
+    );
+  };
 
   const renderMyPage = () => (
     <section className="respondy-three-column respondy-mypage-grid">
@@ -1046,23 +1138,29 @@ export default function HomePage() {
         <h3 className="respondy-title">내 정보</h3>
         <div className="respondy-profile-head">
           <div className="respondy-profile-avatar" aria-hidden>
-            {(userName.trim().slice(0, 1) || 'U').toUpperCase()}
+            {(userName.trim().slice(0, 1) || "U").toUpperCase()}
           </div>
           <div className="respondy-profile-identity">
-            <p className="respondy-profile-name">{userName || '이름 미입력'}</p>
-            <p className="respondy-profile-email">{profileEmail || '이메일 미입력'}</p>
+            <p className="respondy-profile-name">{userName || "이름 미입력"}</p>
+            <p className="respondy-profile-email">
+              {profileEmail || "이메일 미입력"}
+            </p>
           </div>
         </div>
         <dl className="respondy-profile-meta">
           <dt>이름</dt>
-          <dd>{userName || '—'}</dd>
+          <dd>{userName || "—"}</dd>
           <dt>이메일</dt>
-          <dd>{profileEmail || '—'}</dd>
+          <dd>{profileEmail || "—"}</dd>
           <dt>생년월일</dt>
-          <dd>{profileBirthDate || '—'}</dd>
+          <dd>{profileBirthDate || "—"}</dd>
         </dl>
         <div className="respondy-profile-actions">
-          <button className="respondy-primary-btn" type="button" onClick={openProfileEditModal}>
+          <button
+            className="respondy-primary-btn"
+            type="button"
+            onClick={openProfileEditModal}
+          >
             프로필 수정
           </button>
           <button
@@ -1078,10 +1176,13 @@ export default function HomePage() {
       <article className="respondy-card">
         <h3 className="respondy-title">분석 기록</h3>
         <p className="respondy-history-hint">
-          실시간 분석·수동 입력에서 분석을 실행하면 여기에 쌓입니다. 항목을 누르면 상세를 다시 볼 수 있어요.
+          실시간 분석·수동 입력에서 분석을 실행하면 여기에 쌓입니다. 항목을
+          누르면 상세를 다시 볼 수 있어요.
         </p>
         {analysisHistory.length === 0 ? (
-          <p className="respondy-output-empty respondy-history-empty">아직 저장된 분석 기록이 없습니다.</p>
+          <p className="respondy-output-empty respondy-history-empty">
+            아직 저장된 분석 기록이 없습니다.
+          </p>
         ) : (
           <div className="respondy-history-list">
             {analysisHistory.map((rec) => (
@@ -1092,30 +1193,35 @@ export default function HomePage() {
                 onClick={() => setHistoryDetailId(rec.id)}
               >
                 <div className="respondy-history-item-top">
-                  <time className="respondy-history-item-date" dateTime={new Date(rec.at).toISOString()}>
-                    {new Date(rec.at).toLocaleString('ko-KR', {
-                      year: 'numeric',
-                      month: '2-digit',
-                      day: '2-digit',
-                      hour: '2-digit',
-                      minute: '2-digit',
+                  <time
+                    className="respondy-history-item-date"
+                    dateTime={new Date(rec.at).toISOString()}
+                  >
+                    {new Date(rec.at).toLocaleString("ko-KR", {
+                      year: "numeric",
+                      month: "2-digit",
+                      day: "2-digit",
+                      hour: "2-digit",
+                      minute: "2-digit",
                     })}
                   </time>
                   <span
-                    className={`respondy-history-item-badge ${rec.source === 'realtime' ? 'is-realtime' : 'is-manual'}`}
+                    className={`respondy-history-item-badge ${rec.source === "realtime" ? "is-realtime" : "is-manual"}`}
                   >
-                    {rec.source === 'realtime' ? '실시간 분석' : '수동 입력'}
+                    {rec.source === "realtime" ? "실시간 분석" : "수동 입력"}
                   </span>
                 </div>
                 <div className="respondy-history-item-divider" aria-hidden />
-                <span className="respondy-history-item-title">{rec.title || '(제목 없음)'}</span>
+                <span className="respondy-history-item-title">
+                  {rec.title || "(제목 없음)"}
+                </span>
                 <div className="respondy-history-item-actions">
                   <button
                     type="button"
                     className="respondy-item-delete-btn"
                     onClick={(e) => {
-                      e.stopPropagation()
-                      removeAnalysisRecord(rec.id)
+                      e.stopPropagation();
+                      removeAnalysisRecord(rec.id);
                     }}
                   >
                     삭제
@@ -1132,7 +1238,9 @@ export default function HomePage() {
           실시간 분석에서 생성한 인물 정보가 저장됩니다.
         </p>
         {personProfiles.length === 0 ? (
-          <p className="respondy-output-empty respondy-history-empty">저장된 인물 정보가 없습니다.</p>
+          <p className="respondy-output-empty respondy-history-empty">
+            저장된 인물 정보가 없습니다.
+          </p>
         ) : (
           <div className="respondy-person-list">
             {personProfiles.map((person) => (
@@ -1144,19 +1252,22 @@ export default function HomePage() {
               >
                 <div className="respondy-history-item-top">
                   <span className="respondy-person-name">{person.name}</span>
-                  <span className="respondy-history-item-badge is-realtime">인물</span>
+                  <span className="respondy-history-item-badge is-realtime">
+                    인물
+                  </span>
                 </div>
                 <div className="respondy-history-item-divider" aria-hidden />
                 <span className="respondy-person-item-summary">
-                  {person.currentRelation || '관계 미입력'} · {person.goalRelation || '목표 미입력'}
+                  {person.currentRelation || "관계 미입력"} ·{" "}
+                  {person.goalRelation || "목표 미입력"}
                 </span>
                 <div className="respondy-history-item-actions">
                   <button
                     type="button"
                     className="respondy-item-delete-btn"
                     onClick={(e) => {
-                      e.stopPropagation()
-                      removePersonProfile(person.id)
+                      e.stopPropagation();
+                      removePersonProfile(person.id);
                     }}
                   >
                     삭제
@@ -1175,91 +1286,101 @@ export default function HomePage() {
         </button>
       </article>
     </section>
-  )
+  );
 
   const renderHelpView = () => (
     <section className="respondy-center">
       <article className="respondy-card respondy-help-card">
         <h2 className="respondy-title respondy-title--card">사용 설명</h2>
         <p className="respondy-help-intro">
-          RESPONDY는 상대와의 대화를 더 자연스럽게 이어가기 위한 실시간 커뮤니케이션 코치 앱입니다.
+          RESPONDY는 상대와의 대화를 더 자연스럽게 이어가기 위한 실시간
+          커뮤니케이션 코치 앱입니다.
         </p>
         <div className="respondy-help-sections">
           <section>
             <h3 className="respondy-help-subtitle">1) 실시간 분석</h3>
             <p>
-              상대 메시지를 입력하고 실시간 분석을 시작하면 감정 흐름과 맥락, 추천 답장을 확인할 수 있습니다.
+              상대 메시지를 입력하고 실시간 분석을 시작하면 감정 흐름과 맥락,
+              추천 답장을 확인할 수 있습니다.
             </p>
           </section>
           <section>
             <h3 className="respondy-help-subtitle">2) 수동 입력</h3>
             <p>
-              특정 상황을 직접 입력해 결과를 보고 싶을 때 사용합니다. 메시지와 상황을 적으면 분석 결과를 즉시
-              확인할 수 있습니다.
+              특정 상황을 직접 입력해 결과를 보고 싶을 때 사용합니다. 메시지와
+              상황을 적으면 분석 결과를 즉시 확인할 수 있습니다.
             </p>
           </section>
           <section>
             <h3 className="respondy-help-subtitle">3) AI챗</h3>
             <p>
-              대화 연습이 필요할 때 AI챗에서 톤과 표현을 점검할 수 있습니다. Enter 전송, Shift+Enter 줄바꿈이
-              가능합니다.
+              대화 연습이 필요할 때 AI챗에서 톤과 표현을 점검할 수 있습니다.
+              Enter 전송, Shift+Enter 줄바꿈이 가능합니다.
             </p>
           </section>
           <section>
             <h3 className="respondy-help-subtitle">4) 마이페이지</h3>
             <p>
-              분석 기록과 인물 정보를 저장/관리할 수 있습니다. 기록 또는 인물 항목을 누르면 상세 내용을 다시 볼
-              수 있습니다.
+              분석 기록과 인물 정보를 저장/관리할 수 있습니다. 기록 또는 인물
+              항목을 누르면 상세 내용을 다시 볼 수 있습니다.
             </p>
           </section>
         </div>
-        <button className="respondy-primary-btn" type="button" onClick={() => setSelectedView('realtime')}>
+        <button
+          className="respondy-primary-btn"
+          type="button"
+          onClick={() => setSelectedView("realtime")}
+        >
           실시간 분석으로 돌아가기
         </button>
       </article>
     </section>
-  )
+  );
 
   const renderMainContent = () => {
     if (!loggedIn) {
       return (
-        <section className="respondy-center respondy-center--auth">{renderAuthCard()}</section>
-      )
+        <section className="respondy-center respondy-center--auth">
+          {renderAuthCard()}
+        </section>
+      );
     }
 
-    if (selectedView === 'manual') return renderManualView()
-    if (selectedView === 'chat') return renderChatView()
-    if (selectedView === 'mypage') return renderMyPage()
-    if (selectedView === 'help') return renderHelpView()
-    return renderRealtimeView()
-  }
+    if (selectedView === "manual") return renderManualView();
+    if (selectedView === "chat") return renderChatView();
+    if (selectedView === "mypage") return renderMyPage();
+    if (selectedView === "help") return renderHelpView();
+    return renderRealtimeView();
+  };
 
   const historyDetail = historyDetailId
     ? analysisHistory.find((r) => r.id === historyDetailId)
-    : undefined
+    : undefined;
   const historyPersonFromTitle = historyDetail?.title
     ? personProfiles.find((person) => historyDetail.title.includes(person.name))
-    : undefined
+    : undefined;
   const historyRelationDisplay =
     historyDetail &&
     (historyDetail.relation === historyPersonFromTitle?.name ||
-      historyDetail.relation === '—' ||
+      historyDetail.relation === "—" ||
       !historyDetail.relation.trim())
-      ? historyPersonFromTitle?.currentRelation || '—'
-      : historyDetail?.relation || '—'
+      ? historyPersonFromTitle?.currentRelation || "—"
+      : historyDetail?.relation || "—";
   const historyGoalRelationDisplay =
     historyDetail &&
-    (historyDetail.goalRelation === '대화 유지' ||
-      historyDetail.goalRelation === '—' ||
+    (historyDetail.goalRelation === "대화 유지" ||
+      historyDetail.goalRelation === "—" ||
       !historyDetail.goalRelation.trim())
-      ? historyPersonFromTitle?.goalRelation || '—'
-      : historyDetail?.goalRelation || '—'
+      ? historyPersonFromTitle?.goalRelation || "—"
+      : historyDetail?.goalRelation || "—";
   const personDetail = personDetailId
     ? personProfiles.find((person) => person.id === personDetailId)
-    : undefined
+    : undefined;
 
   return (
-    <div className={`respondy-shell${!loggedIn ? ' respondy-shell--auth' : ''}`}>
+    <div
+      className={`respondy-shell${!loggedIn ? " respondy-shell--auth" : ""}`}
+    >
       <header className="respondy-header">
         <h1 className="respondy-logo">RESPONDY</h1>
         {loggedIn ? (
@@ -1268,7 +1389,7 @@ export default function HomePage() {
               <button
                 key={item.key}
                 type="button"
-                className={`respondy-nav-item ${selectedView === item.key ? 'is-active' : ''}`}
+                className={`respondy-nav-item ${selectedView === item.key ? "is-active" : ""}`}
                 onClick={() => setSelectedView(item.key)}
               >
                 {item.label}
@@ -1285,7 +1406,7 @@ export default function HomePage() {
                 className="respondy-help-btn"
                 type="button"
                 aria-label="사용 설명 보기"
-                onClick={() => setSelectedView('help')}
+                onClick={() => setSelectedView("help")}
               >
                 ?
               </button>
@@ -1293,12 +1414,12 @@ export default function HomePage() {
                 className="respondy-logout-btn"
                 type="button"
                 onClick={() => {
-                  void stopRealtimeDetection()
-                  setLoggedIn(false)
-                  setAuthView('login')
-                  setSelectedView('realtime')
-                  setAnalysisHistory([])
-                  setHistoryDetailId(null)
+                  void stopRealtimeDetection();
+                  setLoggedIn(false);
+                  setAuthView("login");
+                  setSelectedView("realtime");
+                  setAnalysisHistory([]);
+                  setHistoryDetailId(null);
                 }}
               >
                 로그아웃
@@ -1313,7 +1434,11 @@ export default function HomePage() {
       <main className="respondy-main">{renderMainContent()}</main>
 
       {loggedIn && showProfileEditModal && (
-        <div className="respondy-modal-backdrop" role="presentation" onClick={closeProfileEditModal}>
+        <div
+          className="respondy-modal-backdrop"
+          role="presentation"
+          onClick={closeProfileEditModal}
+        >
           <div
             className="respondy-modal respondy-person-modal"
             role="dialog"
@@ -1324,7 +1449,10 @@ export default function HomePage() {
             <div className="respondy-modal-head">
               <div className="respondy-modal-head-text">
                 <p className="respondy-modal-eyebrow">프로필 수정</p>
-                <h2 id="profile-edit-modal-title" className="respondy-modal-title">
+                <h2
+                  id="profile-edit-modal-title"
+                  className="respondy-modal-title"
+                >
                   내 정보 편집
                 </h2>
               </div>
@@ -1334,7 +1462,13 @@ export default function HomePage() {
                 onClick={closeProfileEditModal}
                 aria-label="닫기"
               >
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden>
+                <svg
+                  width="20"
+                  height="20"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  aria-hidden
+                >
                   <path
                     d="M18 6L6 18M6 6l12 12"
                     stroke="currentColor"
@@ -1403,7 +1537,11 @@ export default function HomePage() {
       )}
 
       {loggedIn && showPasswordChangeModal && (
-        <div className="respondy-modal-backdrop" role="presentation" onClick={closePasswordChangeModal}>
+        <div
+          className="respondy-modal-backdrop"
+          role="presentation"
+          onClick={closePasswordChangeModal}
+        >
           <div
             className="respondy-modal respondy-person-modal"
             role="dialog"
@@ -1414,7 +1552,10 @@ export default function HomePage() {
             <div className="respondy-modal-head">
               <div className="respondy-modal-head-text">
                 <p className="respondy-modal-eyebrow">보안 설정</p>
-                <h2 id="password-change-modal-title" className="respondy-modal-title">
+                <h2
+                  id="password-change-modal-title"
+                  className="respondy-modal-title"
+                >
                   비밀번호 변경
                 </h2>
               </div>
@@ -1424,7 +1565,13 @@ export default function HomePage() {
                 onClick={closePasswordChangeModal}
                 aria-label="닫기"
               >
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden>
+                <svg
+                  width="20"
+                  height="20"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  aria-hidden
+                >
                   <path
                     d="M18 6L6 18M6 6l12 12"
                     stroke="currentColor"
@@ -1445,8 +1592,8 @@ export default function HomePage() {
                   type="password"
                   value={currentPasswordInput}
                   onChange={(e) => {
-                    setCurrentPasswordInput(e.target.value)
-                    setPasswordChangeError('')
+                    setCurrentPasswordInput(e.target.value);
+                    setPasswordChangeError("");
                   }}
                   autoComplete="current-password"
                 />
@@ -1459,8 +1606,8 @@ export default function HomePage() {
                   type="password"
                   value={newPasswordInput}
                   onChange={(e) => {
-                    setNewPasswordInput(e.target.value)
-                    setPasswordChangeError('')
+                    setNewPasswordInput(e.target.value);
+                    setPasswordChangeError("");
                   }}
                   autoComplete="new-password"
                 />
@@ -1473,14 +1620,16 @@ export default function HomePage() {
                   type="password"
                   value={confirmPasswordInput}
                   onChange={(e) => {
-                    setConfirmPasswordInput(e.target.value)
-                    setPasswordChangeError('')
+                    setConfirmPasswordInput(e.target.value);
+                    setPasswordChangeError("");
                   }}
                   autoComplete="new-password"
                 />
               </div>
               {passwordChangeError && (
-                <p className="respondy-helper-text respondy-helper-text--inline">{passwordChangeError}</p>
+                <p className="respondy-helper-text respondy-helper-text--inline">
+                  {passwordChangeError}
+                </p>
               )}
               <div className="respondy-modal-actions">
                 <button
@@ -1494,7 +1643,11 @@ export default function HomePage() {
                   type="button"
                   className="respondy-primary-btn respondy-modal-primary-btn"
                   onClick={saveChangedPassword}
-                  disabled={!currentPasswordInput || !newPasswordInput || !confirmPasswordInput}
+                  disabled={
+                    !currentPasswordInput ||
+                    !newPasswordInput ||
+                    !confirmPasswordInput
+                  }
                 >
                   변경하기
                 </button>
@@ -1505,7 +1658,11 @@ export default function HomePage() {
       )}
 
       {loggedIn && showPersonCreateModal && (
-        <div className="respondy-modal-backdrop" role="presentation" onClick={closePersonCreateModal}>
+        <div
+          className="respondy-modal-backdrop"
+          role="presentation"
+          onClick={closePersonCreateModal}
+        >
           <div
             className="respondy-modal respondy-person-modal"
             role="dialog"
@@ -1516,7 +1673,10 @@ export default function HomePage() {
             <div className="respondy-modal-head">
               <div className="respondy-modal-head-text">
                 <p className="respondy-modal-eyebrow">인물 생성</p>
-                <h2 id="person-create-modal-title" className="respondy-modal-title">
+                <h2
+                  id="person-create-modal-title"
+                  className="respondy-modal-title"
+                >
                   새 인물 만들기
                 </h2>
               </div>
@@ -1526,7 +1686,13 @@ export default function HomePage() {
                 onClick={closePersonCreateModal}
                 aria-label="닫기"
               >
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden>
+                <svg
+                  width="20"
+                  height="20"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  aria-hidden
+                >
                   <path
                     d="M18 6L6 18M6 6l12 12"
                     stroke="currentColor"
@@ -1565,7 +1731,10 @@ export default function HomePage() {
                     </option>
                   ))}
                 </select>
-                <label className="respondy-label" htmlFor="person-current-relation">
+                <label
+                  className="respondy-label"
+                  htmlFor="person-current-relation"
+                >
                   현재 관계
                 </label>
                 <input
@@ -1576,7 +1745,10 @@ export default function HomePage() {
                   placeholder="예: 선후배"
                   autoComplete="off"
                 />
-                <label className="respondy-label" htmlFor="person-goal-relation">
+                <label
+                  className="respondy-label"
+                  htmlFor="person-goal-relation"
+                >
                   목표 관계
                 </label>
                 <input
@@ -1609,7 +1781,11 @@ export default function HomePage() {
                 />
               </div>
               <div className="respondy-modal-actions">
-                <button type="button" className="respondy-modal-secondary-btn" onClick={closePersonCreateModal}>
+                <button
+                  type="button"
+                  className="respondy-modal-secondary-btn"
+                  onClick={closePersonCreateModal}
+                >
                   취소
                 </button>
                 <button
@@ -1627,7 +1803,11 @@ export default function HomePage() {
       )}
 
       {loggedIn && personDetail && (
-        <div className="respondy-modal-backdrop" role="presentation" onClick={closePersonDetailModal}>
+        <div
+          className="respondy-modal-backdrop"
+          role="presentation"
+          onClick={closePersonDetailModal}
+        >
           <div
             className="respondy-modal respondy-person-modal"
             role="dialog"
@@ -1638,7 +1818,10 @@ export default function HomePage() {
             <div className="respondy-modal-head">
               <div className="respondy-modal-head-text">
                 <p className="respondy-modal-eyebrow">인물 상세</p>
-                <h2 id="person-detail-modal-title" className="respondy-modal-title">
+                <h2
+                  id="person-detail-modal-title"
+                  className="respondy-modal-title"
+                >
                   인물 정보 수정
                 </h2>
               </div>
@@ -1648,7 +1831,13 @@ export default function HomePage() {
                 onClick={closePersonDetailModal}
                 aria-label="닫기"
               >
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden>
+                <svg
+                  width="20"
+                  height="20"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  aria-hidden
+                >
                   <path
                     d="M18 6L6 18M6 6l12 12"
                     stroke="currentColor"
@@ -1670,7 +1859,10 @@ export default function HomePage() {
                   onChange={(e) => setEditPersonName(e.target.value)}
                   autoComplete="off"
                 />
-                <label className="respondy-label" htmlFor="person-detail-age-group">
+                <label
+                  className="respondy-label"
+                  htmlFor="person-detail-age-group"
+                >
                   나이대
                 </label>
                 <select
@@ -1686,7 +1878,10 @@ export default function HomePage() {
                     </option>
                   ))}
                 </select>
-                <label className="respondy-label" htmlFor="person-detail-current-relation">
+                <label
+                  className="respondy-label"
+                  htmlFor="person-detail-current-relation"
+                >
                   현재 관계
                 </label>
                 <input
@@ -1696,7 +1891,10 @@ export default function HomePage() {
                   onChange={(e) => setEditPersonCurrentRelation(e.target.value)}
                   autoComplete="off"
                 />
-                <label className="respondy-label" htmlFor="person-detail-goal-relation">
+                <label
+                  className="respondy-label"
+                  htmlFor="person-detail-goal-relation"
+                >
                   목표 관계
                 </label>
                 <input
@@ -1706,7 +1904,10 @@ export default function HomePage() {
                   onChange={(e) => setEditPersonGoalRelation(e.target.value)}
                   autoComplete="off"
                 />
-                <label className="respondy-label" htmlFor="person-detail-personality">
+                <label
+                  className="respondy-label"
+                  htmlFor="person-detail-personality"
+                >
                   성격
                 </label>
                 <textarea
@@ -1771,12 +1972,18 @@ export default function HomePage() {
                 type="button"
                 className="respondy-modal-close"
                 onClick={(e) => {
-                  e.stopPropagation()
-                  setHistoryDetailId(null)
+                  e.stopPropagation();
+                  setHistoryDetailId(null);
                 }}
                 aria-label="닫기"
               >
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden>
+                <svg
+                  width="20"
+                  height="20"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  aria-hidden
+                >
                   <path
                     d="M18 6L6 18M6 6l12 12"
                     stroke="currentColor"
@@ -1788,17 +1995,19 @@ export default function HomePage() {
             </div>
             <div className="respondy-modal-meta">
               <span
-                className={`respondy-modal-badge ${historyDetail.source === 'realtime' ? 'is-realtime' : 'is-manual'}`}
+                className={`respondy-modal-badge ${historyDetail.source === "realtime" ? "is-realtime" : "is-manual"}`}
               >
-                {historyDetail.source === 'realtime' ? '실시간 분석' : '수동 입력'}
+                {historyDetail.source === "realtime"
+                  ? "실시간 분석"
+                  : "수동 입력"}
               </span>
               <span className="respondy-modal-meta-sep" aria-hidden>
                 ·
               </span>
               <span className="respondy-modal-time">
-                {new Date(historyDetail.at).toLocaleString('ko-KR', {
-                  dateStyle: 'full',
-                  timeStyle: 'short',
+                {new Date(historyDetail.at).toLocaleString("ko-KR", {
+                  dateStyle: "full",
+                  timeStyle: "short",
                 })}
               </span>
             </div>
@@ -1807,18 +2016,20 @@ export default function HomePage() {
                 <h3 className="respondy-modal-section-title">입력 요약</h3>
                 <dl className="respondy-modal-dl">
                   <dt>제목</dt>
-                  <dd>{historyDetail.title || '—'}</dd>
+                  <dd>{historyDetail.title || "—"}</dd>
                   <dt>상대방과의 관계</dt>
                   <dd>{historyRelationDisplay}</dd>
                   <dt>목표 관계</dt>
                   <dd>{historyGoalRelationDisplay}</dd>
                   <dt>상황 설명</dt>
-                  <dd className="respondy-modal-pre">{historyDetail.situation || '—'}</dd>
-                  {historyDetail.source === 'manual' && (
+                  <dd className="respondy-modal-pre">
+                    {historyDetail.situation || "—"}
+                  </dd>
+                  {historyDetail.source === "manual" && (
                     <>
                       <dt>받은 메시지</dt>
                       <dd className="respondy-modal-pre">
-                        {historyDetail.receivedMessage || '—'}
+                        {historyDetail.receivedMessage || "—"}
                       </dd>
                     </>
                   )}
@@ -1827,28 +2038,41 @@ export default function HomePage() {
               <section className="respondy-modal-section respondy-modal-panel">
                 <h3 className="respondy-modal-section-title">AI 분석 결과</h3>
                 <p className="respondy-modal-label">감정 분석</p>
-                <div className="respondy-modal-textbox">{historyDetail.emotion}</div>
+                <div className="respondy-modal-textbox">
+                  {historyDetail.emotion}
+                </div>
                 <p className="respondy-modal-label">맥락 해석</p>
-                <div className="respondy-modal-textbox">{historyDetail.context}</div>
+                <div className="respondy-modal-textbox">
+                  {historyDetail.context}
+                </div>
               </section>
               <section className="respondy-modal-section respondy-modal-panel">
                 <h3 className="respondy-modal-section-title">추천 답장</h3>
                 <ul className="respondy-modal-suggestions">
                   {historyDetail.suggestions.map((s, i) => {
-                    const copyId = `history-${historyDetail.id}-${i}`
+                    const copyId = `history-${historyDetail.id}-${i}`;
                     return (
-                      <li key={`${historyDetail.id}-s-${i}`} className="respondy-modal-suggestion">
-                        <span className="respondy-modal-suggestion-index">{i + 1}</span>
-                        <span className="respondy-modal-suggestion-text">{s}</span>
+                      <li
+                        key={`${historyDetail.id}-s-${i}`}
+                        className="respondy-modal-suggestion"
+                      >
+                        <span className="respondy-modal-suggestion-index">
+                          {i + 1}
+                        </span>
+                        <span className="respondy-modal-suggestion-text">
+                          {s}
+                        </span>
                         <button
                           type="button"
                           className="respondy-modal-copy-btn"
                           onClick={() => void copySuggestion(s, copyId)}
                         >
-                          {copiedSuggestionId === copyId ? '복사됨' : '복사하기'}
+                          {copiedSuggestionId === copyId
+                            ? "복사됨"
+                            : "복사하기"}
                         </button>
                       </li>
-                    )
+                    );
                   })}
                 </ul>
               </section>
@@ -1857,5 +2081,5 @@ export default function HomePage() {
         </div>
       )}
     </div>
-  )
+  );
 }
