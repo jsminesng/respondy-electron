@@ -113,6 +113,7 @@ export default function HomePage() {
   const [showRealtimeResults, setShowRealtimeResults] = useState(false)
   const [showManualResults, setShowManualResults] = useState(false)
   const [isRealtimeMonitoring, setIsRealtimeMonitoring] = useState(false)
+  const [isPickingRegion, setIsPickingRegion] = useState(false)
   const [analysisHistory, setAnalysisHistory] = useState<AnalysisRecord[]>([])
   const [historyDetailId, setHistoryDetailId] = useState<string | null>(null)
   const [personDetailId, setPersonDetailId] = useState<string | null>(null)
@@ -384,6 +385,28 @@ export default function HomePage() {
       ...h,
     ])
     setShowRealtimeResults(true)
+  }
+
+  const pickRealtimeRegion = async () => {
+    const respondy = getRespondy()
+    if (!respondy) {
+      window.alert('Electron 환경에서만 영역 선택을 사용할 수 있습니다.')
+      return
+    }
+    try {
+      setIsPickingRegion(true)
+      const picked = await respondy.pickOcrRegion()
+      if (!picked) return
+      window.alert(
+        `영역 설정 완료: x=${picked.x}, y=${picked.y}, w=${picked.width}, h=${picked.height}`,
+      )
+    } catch (e) {
+      const message =
+        e instanceof Error ? e.message : '영역 선택 중 오류가 발생했습니다.'
+      window.alert(message)
+    } finally {
+      setIsPickingRegion(false)
+    }
   }
 
   const realtimeFormReady =
@@ -666,6 +689,14 @@ export default function HomePage() {
           onClick={() => void handleRealtimeMonitoringToggle()}
         >
           {isRealtimeMonitoring ? '종료하기' : '실시간 감지 시작'}
+        </button>
+        <button
+          className="respondy-primary-btn respondy-secondary-btn mt-2 sm:mt-3"
+          type="button"
+          onClick={() => void pickRealtimeRegion()}
+          disabled={isPickingRegion}
+        >
+          {isPickingRegion ? '영역 선택 중...' : '화면에서 OCR 영역 선택'}
         </button>
       </article>
 
