@@ -71,12 +71,18 @@ function restartOcrLoop() {
   ocrLoopHandle = startOcrLoop(
     () => ocrSettingsStore.store,
     () => activeRealtimeSessionId,
-    (text) => {
+    (payload) => {
       broadcastNotification({
         sender: 'OCR',
-        message: text.slice(0, 8000),
+        message: payload.text.slice(0, 8000),
         source: 'ocr',
         receivedAt: Date.now(),
+        summary: payload.analysis?.summary,
+        emotion: payload.analysis?.emotion,
+        tone: payload.analysis?.tone,
+        riskLevel: payload.analysis?.riskLevel,
+        strategy: payload.analysis?.strategy,
+        recommendedReplies: payload.analysis?.recommendedReplies ?? [],
       })
     },
     (err) => {

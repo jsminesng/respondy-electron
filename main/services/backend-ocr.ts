@@ -8,7 +8,29 @@ type CaptureAnalysisResponse = {
   success?: unknown
   data?: {
     messages?: CaptureMessage[]
+    analysis_results?: Array<{
+      summary?: unknown
+      emotion?: unknown
+      tone?: unknown
+      risk_level?: unknown
+      strategy?: unknown
+      recommended_replies?: unknown
+    }>
   }
+}
+
+export type CaptureAnalysisSnapshot = {
+  summary: string
+  emotion: string
+  tone: string
+  riskLevel: string
+  strategy: string
+  recommendedReplies: string[]
+}
+
+export type CaptureExtractionResult = {
+  text: string
+  analysis: CaptureAnalysisSnapshot | null
 }
 
 function getCaptureEndpoint(sessionId: number): string {
@@ -32,7 +54,7 @@ function extractText(body: CaptureAnalysisResponse): string {
 export async function extractTextFromImage(
   image: Buffer,
   sessionId: number,
-): Promise<string> {
+): Promise<CaptureExtractionResult> {
   const body = await requestJson<CaptureAnalysisResponse>(
     getCaptureEndpoint(sessionId),
     {
@@ -48,5 +70,29 @@ export async function extractTextFromImage(
     },
   )
 
-  return extractText(body)
+  const analysisRaw = body.data?.analysis_results?.[0]
+  const recommendedReplies = Array.isArray(analysisRaw?.recommended_replies)
+    ? analysisRaw?.recommended_replies
+        .map((item) => (typeof item === 'string' ? item.trim() : ''))
+        .filter(Boolean)
+    : []
+  const analysis: CaptureAnalysisSnapshot | null = analysisRaw
+    ? {
+        summary:
+          typeof analysisRaw.summary === 'string' ? analysisRaw.summary : '',
+        emotion:
+          typeof analysisRaw.emotion === 'string' ? analysisRaw.emotion : '',
+        tone: typeof analysisRaw.tone === 'string' ? analysisRaw.tone : '',
+        riskLevel:
+          typeof analysisRaw.risk_level === 'string' ? analysisRaw.risk_level : '',
+        strategy:
+          typeof analysisRaw.strategy === 'string' ? analysisRaw.strategy : '',
+        recommendedReplies,
+      }
+    : null
+
+  return {
+    text: extractText(body),
+    analysis,
+  }
 }

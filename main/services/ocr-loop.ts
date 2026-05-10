@@ -5,9 +5,16 @@ import {
   getFrameDifferenceRatio,
   type FrameSignature,
 } from './ocr-screen-capture'
-import { extractTextFromImage } from './backend-ocr'
+import {
+  extractTextFromImage,
+  type CaptureAnalysisSnapshot,
+} from './backend-ocr'
 
 export type OcrLoopHandle = { stop: () => void }
+export type OcrDetectionPayload = {
+  text: string
+  analysis: CaptureAnalysisSnapshot | null
+}
 const FRAME_CHANGE_THRESHOLD = 0.035
 
 function stripKakaoTime(text: string): string {
@@ -22,7 +29,7 @@ function stripKakaoTime(text: string): string {
 export function startOcrLoop(
   getSettings: () => OcrSettings,
   getSessionId: () => number | null,
-  onText: (text: string) => void,
+  onDetection: (payload: OcrDetectionPayload) => void,
   onError?: (err: Error) => void,
 ): OcrLoopHandle {
   let timer: ReturnType<typeof setInterval> | null = null
@@ -47,13 +54,16 @@ export function startOcrLoop(
 
       const sessionId = getSessionId()
       if (!sessionId) return
-      const raw = await extractTextFromImage(buf, sessionId)
-      const cleaned = stripKakaoTime(raw)
+      const extraction = await extractTextFromImage(buf, sessionId)
+      const cleaned = stripKakaoTime(extraction.text)
       const norm = cleaned.replace(/\s+/g, ' ').trim()
       if (norm.length < 2) return
       if (norm === lastNormalized) return
       lastNormalized = norm
-      onText(norm)
+      onDetection({
+        text: norm,
+        analysis: extraction.analysis,
+      })
     } catch (e) {
       const err = e instanceof Error ? e : new Error(String(e))
       onError?.(err)

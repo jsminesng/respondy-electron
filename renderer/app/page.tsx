@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { getRespondy } from "../lib/respondy-client";
-import type { AuthState } from "../../shared/respondy-types";
+import type { AuthState, NotificationPayload } from "../../shared/respondy-types";
 
 type AuthView = "login" | "signup";
 type AppView = "realtime" | "manual" | "chat" | "mypage" | "help";
@@ -67,15 +67,10 @@ function formatChatTime(ts: number) {
   });
 }
 
-const REALTIME_RESULT = {
-  emotion: `-설렘 + 긴장 -> "혹시..." 같은 표현에서 조심스러운 호감 드러남\n\n-설렘 + 호감 상승 -> 관심받는 느낌에 긍정적으로 반응하고있음`,
-  context: `-서로 호감을 드러내는 표현법을 사용\n\n-상대 취향을 기억하는 행동 -> 호감의 간접 표현\n\n-상대의 반응이 긍정적이라 관계가 진전될 가능성 높음`,
-  suggestions: [
-    "좋아~ 토요일에 만나자!",
-    "내가 자주 가는 맛집 있는데 같이 갈래?",
-    "이따가 또 연락해~",
-    "그때 봐~ 기대된다 ㅎㅎ",
-  ],
+const EMPTY_REALTIME_RESULT = {
+  emotion: "",
+  context: "",
+  suggestions: [] as string[],
 };
 
 const MANUAL_RESULT = {
@@ -130,6 +125,7 @@ export default function HomePage() {
   const [showManualResults, setShowManualResults] = useState(false);
   const [isRealtimeMonitoring, setIsRealtimeMonitoring] = useState(false);
   const [isPickingRegion, setIsPickingRegion] = useState(false);
+  const [realtimeResult, setRealtimeResult] = useState(EMPTY_REALTIME_RESULT);
   const [analysisHistory, setAnalysisHistory] = useState<AnalysisRecord[]>([]);
   const [historyDetailId, setHistoryDetailId] = useState<string | null>(null);
   const [personDetailId, setPersonDetailId] = useState<string | null>(null);
@@ -181,6 +177,50 @@ export default function HomePage() {
       void stopRealtimeDetection();
     }
   }, [selectedView]);
+
+  useEffect(() => {
+    const respondy = getRespondy();
+    if (!respondy) return;
+    return respondy.onNotification((payload: NotificationPayload) => {
+      if (payload.source !== "ocr") return;
+      const realtimeProfile = personProfiles.find(
+        (person) => person.name === selectedRealtimePerson,
+      );
+
+      const emotion = payload.summary?.trim() || payload.emotion?.trim() || "";
+      const context = payload.strategy?.trim() || payload.tone?.trim() || "";
+      const suggestions =
+        payload.recommendedReplies?.filter((item) => item.trim()) ?? [];
+
+      setRealtimeReceivedMessage(payload.message);
+      setRealtimeResult({
+        emotion,
+        context,
+        suggestions,
+      });
+      setShowRealtimeResults(true);
+
+      const id = `rt-${payload.receivedAt}`;
+      setAnalysisHistory((h) => [
+        {
+          id,
+          at: payload.receivedAt,
+          source: "realtime",
+          title: `${selectedRealtimePerson.trim() || "실시간"}와의 실시간 대화`,
+          relation: realtimeProfile?.currentRelation?.trim() || "—",
+          goalRelation: realtimeProfile?.goalRelation?.trim() || "—",
+          situation: payload.message.trim() || "실시간 감지",
+          receivedMessage: payload.message,
+          emotion: emotion || "분석 결과 없음",
+          context: context || "맥락 결과 없음",
+          suggestions: suggestions.length
+            ? suggestions
+            : ["추천 답장이 아직 생성되지 않았습니다."],
+        },
+        ...h,
+      ]);
+    });
+  }, [personProfiles, selectedRealtimePerson]);
 
   useEffect(() => {
     if (selectedView !== "manual") setShowManualResults(false);
@@ -269,6 +309,7 @@ export default function HomePage() {
     setNewPersonPersonality("");
     setNewPersonNotes("");
     setShowRealtimeResults(false);
+    setRealtimeResult(EMPTY_REALTIME_RESULT);
     setIsRealtimeMonitoring(false);
     setSelectedManualPerson("");
     setManualSituation("");
@@ -514,7 +555,10 @@ export default function HomePage() {
     );
   };
 
-  const clearRealtimeResults = () => setShowRealtimeResults(false);
+  const clearRealtimeResults = () => {
+    setShowRealtimeResults(false);
+    setRealtimeResult(EMPTY_REALTIME_RESULT);
+  };
   const clearManualResults = () => setShowManualResults(false);
 
   const startRealtimeDetection = async (): Promise<boolean> => {
@@ -560,26 +604,8 @@ export default function HomePage() {
 
     const started = await startRealtimeDetection();
     if (!started) return;
-
-    if (!realtimeFormReady) return;
-    const id = `rt-${Date.now()}`;
-    setAnalysisHistory((h) => [
-      {
-        id,
-        at: Date.now(),
-        source: "realtime",
-        title: `${selectedRealtimePerson.trim()}와의 실시간 대화`,
-        relation: selectedRealtimeProfile?.currentRelation?.trim() || "—",
-        goalRelation: selectedRealtimeProfile?.goalRelation?.trim() || "—",
-        situation: realtimeReceivedMessage.trim(),
-        receivedMessage: realtimeReceivedMessage.trim(),
-        emotion: REALTIME_RESULT.emotion,
-        context: REALTIME_RESULT.context,
-        suggestions: [...REALTIME_RESULT.suggestions],
-      },
-      ...h,
-    ]);
-    setShowRealtimeResults(true);
+    setRealtimeResult(EMPTY_REALTIME_RESULT);
+    setShowRealtimeResults(false);
   };
 
   const pickRealtimeRegion = async () => {
@@ -603,9 +629,6 @@ export default function HomePage() {
       setIsPickingRegion(false);
     }
   };
-
-  const realtimeFormReady =
-    selectedRealtimePerson.trim() && realtimeReceivedMessage.trim();
 
   const manualFormReady =
     selectedManualPerson.trim() &&
@@ -938,14 +961,14 @@ export default function HomePage() {
         <textarea
           className={`respondy-textarea respondy-readonly-area respondy-output-area ${showRealtimeResults ? "" : "respondy-output-pending"}`}
           readOnly
-          value={showRealtimeResults ? REALTIME_RESULT.emotion : ""}
+          value={showRealtimeResults ? realtimeResult.emotion : ""}
           placeholder="왼쪽 패널을 모두 입력한 뒤 실시간 감지 시작을 누르면 표시됩니다"
         />
         <label className="respondy-label">맥락 해석</label>
         <textarea
           className={`respondy-textarea respondy-readonly-area respondy-output-area ${showRealtimeResults ? "" : "respondy-output-pending"}`}
           readOnly
-          value={showRealtimeResults ? REALTIME_RESULT.context : ""}
+          value={showRealtimeResults ? realtimeResult.context : ""}
           placeholder="왼쪽 패널을 모두 입력한 뒤 실시간 감지 시작을 누르면 표시됩니다"
         />
       </article>
@@ -954,7 +977,7 @@ export default function HomePage() {
         <h3 className="respondy-card-title">추천 답장</h3>
         {showRealtimeResults ? (
           <div className="respondy-suggestions-body">
-            {REALTIME_RESULT.suggestions.map((message, index) => {
+            {realtimeResult.suggestions.map((message, index) => {
               const copyId = `realtime-${index}`;
               return (
                 <div key={message} className="respondy-suggestion">

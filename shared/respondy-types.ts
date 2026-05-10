@@ -4,6 +4,12 @@ export type NotificationPayload = {
   raw?: string
   source: 'windows' | 'darwin' | 'simulated' | 'ocr'
   receivedAt: number
+  summary?: string
+  emotion?: string
+  tone?: string
+  riskLevel?: string
+  strategy?: string
+  recommendedReplies?: string[]
 }
 
 export type OcrRegion = {
