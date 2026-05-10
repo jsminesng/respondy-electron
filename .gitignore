@@ -3,10 +3,12 @@ node_modules
 
 # logs
 *.log
+.DS_Store
 
 # next.js
 .next
 next-env.d.ts
+renderer/tsconfig.tsbuildinfo
 
 # build
 /app
