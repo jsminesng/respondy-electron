@@ -38,12 +38,6 @@ const respondy: RespondyApi = {
   getAuthState() {
     return ipcRenderer.invoke("auth:get-state");
   },
-  hideOverlay() {
-    ipcRenderer.send("overlay:hide");
-  },
-  showOverlay() {
-    ipcRenderer.send("overlay:show");
-  },
   startRealtimeDetection(input?: RealtimeDetectionStartInput): Promise<void> {
     return ipcRenderer.invoke("ocr:start", input);
   },

@@ -3,7 +3,6 @@ import dotenv from 'dotenv'
 import { app, ipcMain, BrowserWindow, screen } from 'electron'
 import serve from 'electron-serve'
 import { createWindow } from './helpers'
-import { createOverlayWindow } from './helpers/create-overlay-window'
 import {
   analyzeSentimentKorean,
   generateReplySuggestions,
@@ -39,7 +38,6 @@ if (isProd) {
 }
 
 let mainWindow: BrowserWindow | null = null
-let overlayWindow: BrowserWindow | null = null
 let regionPickerWindow: BrowserWindow | null = null
 let ocrLoopHandle: ReturnType<typeof startOcrLoop> | null = null
 let isRealtimeDetectionActive = false
@@ -62,19 +60,6 @@ function sendToRenderer(
 function broadcastNotification(payload: NotificationPayload) {
   const channel = 'notification-detected'
   sendToRenderer(mainWindow, channel, payload)
-  sendToRenderer(overlayWindow, channel, payload)
-}
-
-function showOverlayFromPayload() {
-  const ov = overlayWindow
-  if (ov && !ov.isDestroyed()) {
-    try {
-      ov.show()
-      ov.focus()
-    } catch {
-      /* 창 파괴 직후 */
-    }
-  }
 }
 
 function restartOcrLoop() {
@@ -93,7 +78,6 @@ function restartOcrLoop() {
         source: 'ocr',
         receivedAt: Date.now(),
       })
-      showOverlayFromPayload()
     },
     (err) => {
       console.error('[Respondy] OCR:', err.message)
@@ -192,19 +176,8 @@ function completeRegionPicker(region: OcrRegion | null) {
     },
   })
 
-  overlayWindow = createOverlayWindow({
-    width: 400,
-    height: 580,
-    webPreferences: {
-      preload: path.join(__dirname, 'preload.js'),
-    },
-  })
-
   mainWindow.on('closed', () => {
     mainWindow = null
-  })
-  overlayWindow.on('closed', () => {
-    overlayWindow = null
   })
 
   /* loadURL 전에 등록해야 렌더러 첫 invoke 시 핸들러가 없다는 오류가 나지 않음 */
@@ -238,25 +211,6 @@ function completeRegionPicker(region: OcrRegion | null) {
   })
 
   ipcMain.handle('auth:logout', () => logout())
-
-  ipcMain.on('overlay:hide', () => {
-    const ov = overlayWindow
-    if (ov && !ov.isDestroyed()) {
-      try {
-        ov.hide()
-      } catch {}
-    }
-  })
-
-  ipcMain.on('overlay:show', () => {
-    const ov = overlayWindow
-    if (ov && !ov.isDestroyed()) {
-      try {
-        ov.show()
-        ov.focus()
-      } catch {}
-    }
-  })
 
   ipcMain.handle('ocr:get-settings', () => ocrSettingsStore.store)
 
@@ -329,11 +283,9 @@ function completeRegionPicker(region: OcrRegion | null) {
 
   if (isProd) {
     await mainWindow.loadURL('app://./')
-    await overlayWindow.loadURL('app://./overlay/')
   } else {
     const port = process.argv[2]
     await mainWindow.loadURL(`http://localhost:${port}/`)
-    await overlayWindow.loadURL(`http://localhost:${port}/overlay/`)
   }
 
   // 실시간 감지 시작 버튼을 누른 이후에만 루프를 시작한다.
