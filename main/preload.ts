@@ -4,6 +4,7 @@ import type {
   NotificationPayload,
   OcrRegion,
   OcrSettings,
+  RealtimeDetectionStartInput,
   RespondyApi,
   SentimentResult,
 } from "../shared/respondy-types";
@@ -43,8 +44,8 @@ const respondy: RespondyApi = {
   showOverlay() {
     ipcRenderer.send("overlay:show");
   },
-  startRealtimeDetection(): Promise<void> {
-    return ipcRenderer.invoke("ocr:start");
+  startRealtimeDetection(input?: RealtimeDetectionStartInput): Promise<void> {
+    return ipcRenderer.invoke("ocr:start", input);
   },
   stopRealtimeDetection(): Promise<void> {
     return ipcRenderer.invoke("ocr:stop");

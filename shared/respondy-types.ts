@@ -74,6 +74,13 @@ export type DisplayBounds = {
   height: number
 }
 
+export type RealtimeDetectionStartInput = {
+  title?: string
+  situationContext?: string
+  analysisGoal?: string
+  avatarId?: number | null
+}
+
 export type RespondyApi = {
   onNotification: (callback: (payload: NotificationPayload) => void) => () => void
   analyzeSentiment: (text: string) => Promise<SentimentResult>
@@ -84,7 +91,7 @@ export type RespondyApi = {
   getAuthState: () => Promise<AuthState>
   hideOverlay: () => void
   showOverlay: () => void
-  startRealtimeDetection: () => Promise<void>
+  startRealtimeDetection: (input?: RealtimeDetectionStartInput) => Promise<void>
   stopRealtimeDetection: () => Promise<void>
   getRealtimeDetectionState: () => Promise<{ active: boolean }>
   pickOcrRegion: () => Promise<OcrRegion | null>

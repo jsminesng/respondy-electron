@@ -13,6 +13,7 @@ import type {
   NotificationPayload,
   OcrRegion,
   OcrSettings,
+  RealtimeDetectionStartInput,
   SignupInput,
 } from '../shared/respondy-types'
 import {
@@ -23,6 +24,7 @@ import {
 } from './services/auth-service'
 import { ocrSettingsStore } from './services/ocr-settings'
 import { startOcrLoop } from './services/ocr-loop'
+import { createRealtimeSession } from './services/backend-session'
 
 const isProd = process.env.NODE_ENV === 'production'
 
@@ -41,6 +43,7 @@ let overlayWindow: BrowserWindow | null = null
 let regionPickerWindow: BrowserWindow | null = null
 let ocrLoopHandle: ReturnType<typeof startOcrLoop> | null = null
 let isRealtimeDetectionActive = false
+let activeRealtimeSessionId: number | null = null
 let resolveRegionPicker: ((value: OcrRegion | null) => void) | null = null
 
 function sendToRenderer(
@@ -82,6 +85,7 @@ function restartOcrLoop() {
   if (!s.enabled) return
   ocrLoopHandle = startOcrLoop(
     () => ocrSettingsStore.store,
+    () => activeRealtimeSessionId,
     (text) => {
       broadcastNotification({
         sender: 'OCR',
@@ -269,13 +273,21 @@ function completeRegionPicker(region: OcrRegion | null) {
     restartOcrLoop()
   })
 
-  ipcMain.handle('ocr:start', () => {
+  ipcMain.handle('ocr:start', async (_evt, input?: RealtimeDetectionStartInput) => {
+    if (isRealtimeDetectionActive) return
+    activeRealtimeSessionId = await createRealtimeSession({
+      title: input?.title,
+      situationContext: input?.situationContext,
+      analysisGoal: input?.analysisGoal,
+      avatarId: input?.avatarId ?? null,
+    })
     isRealtimeDetectionActive = true
     restartOcrLoop()
   })
 
   ipcMain.handle('ocr:stop', () => {
     isRealtimeDetectionActive = false
+    activeRealtimeSessionId = null
     ocrLoopHandle?.stop()
     ocrLoopHandle = null
   })

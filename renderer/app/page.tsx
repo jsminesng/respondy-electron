@@ -524,7 +524,13 @@ export default function HomePage() {
       return false;
     }
     try {
-      await respondy.startRealtimeDetection();
+      await respondy.startRealtimeDetection({
+        title: selectedRealtimePerson.trim()
+          ? `${selectedRealtimePerson.trim()} 실시간 분석`
+          : "Respondy 실시간 분석",
+        situationContext: realtimeReceivedMessage.trim(),
+        analysisGoal: "상대 메시지 맥락 기반 답장 추천",
+      });
       setIsRealtimeMonitoring(true);
       return true;
     } catch (e) {

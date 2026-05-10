@@ -1,29 +1,52 @@
 import { requestJson } from './backend-client'
 
-type OcrExtractResponse = {
-  text?: unknown
-  message?: unknown
-  transcript?: unknown
+type CaptureMessage = {
+  content?: unknown
 }
 
-function getOcrExtractEndpoint(): string {
-  return process.env.OCR_EXTRACT_ENDPOINT?.trim() || '/ocr/extract/'
+type CaptureAnalysisResponse = {
+  success?: unknown
+  data?: {
+    messages?: CaptureMessage[]
+  }
 }
 
-function extractText(body: OcrExtractResponse): string {
-  const value = body.text ?? body.message ?? body.transcript
-  return typeof value === 'string' ? value.trim() : ''
+function getCaptureEndpoint(sessionId: number): string {
+  const template =
+    process.env.OCR_EXTRACT_ENDPOINT?.trim() || '/sessions/{session_id}/captures/'
+  if (template.includes('{session_id}')) {
+    return template.replace('{session_id}', String(sessionId))
+  }
+  return `/sessions/${sessionId}/captures/`
 }
 
-export async function extractTextFromImage(image: Buffer): Promise<string> {
-  const body = await requestJson<OcrExtractResponse>(getOcrExtractEndpoint(), {
+function extractText(body: CaptureAnalysisResponse): string {
+  const messages = body.data?.messages
+  if (!Array.isArray(messages) || messages.length === 0) return ''
+  return messages
+    .map((item) => (typeof item?.content === 'string' ? item.content.trim() : ''))
+    .filter(Boolean)
+    .join('\n')
+}
+
+export async function extractTextFromImage(
+  image: Buffer,
+  sessionId: number,
+): Promise<string> {
+  const body = await requestJson<CaptureAnalysisResponse>(
+    getCaptureEndpoint(sessionId),
+    {
     method: 'POST',
     auth: true,
     body: {
-      imageBase64: image.toString('base64'),
-      mimeType: 'image/png',
+      image_base64: `data:image/png;base64,${image.toString('base64')}`,
+      source_type: 'electron',
+      screen_context: {
+        masked: true,
+      },
     },
-  })
+    },
+  )
 
   return extractText(body)
 }

@@ -21,6 +21,7 @@ function stripKakaoTime(text: string): string {
  */
 export function startOcrLoop(
   getSettings: () => OcrSettings,
+  getSessionId: () => number | null,
   onText: (text: string) => void,
   onError?: (err: Error) => void,
 ): OcrLoopHandle {
@@ -44,7 +45,9 @@ export function startOcrLoop(
       }
       lastFrameSignature = signature
 
-      const raw = await extractTextFromImage(buf)
+      const sessionId = getSessionId()
+      if (!sessionId) return
+      const raw = await extractTextFromImage(buf, sessionId)
       const cleaned = stripKakaoTime(raw)
       const norm = cleaned.replace(/\s+/g, ' ').trim()
       if (norm.length < 2) return
