@@ -142,6 +142,7 @@ export default function HomePage() {
   const [copiedSuggestionId, setCopiedSuggestionId] = useState<string | null>(
     null,
   );
+  const realtimeSituationRef = useRef("");
 
   const copySuggestion = async (text: string, id: string) => {
     try {
@@ -192,7 +193,6 @@ export default function HomePage() {
       const suggestions =
         payload.recommendedReplies?.filter((item) => item.trim()) ?? [];
 
-      setRealtimeReceivedMessage(payload.message);
       setRealtimeResult({
         emotion,
         context,
@@ -209,7 +209,7 @@ export default function HomePage() {
           title: `${selectedRealtimePerson.trim() || "실시간"}와의 실시간 대화`,
           relation: realtimeProfile?.currentRelation?.trim() || "—",
           goalRelation: realtimeProfile?.goalRelation?.trim() || "—",
-          situation: payload.message.trim() || "실시간 감지",
+          situation: realtimeSituationRef.current.trim() || "실시간 감지",
           receivedMessage: payload.message,
           emotion: emotion || "분석 결과 없음",
           context: context || "맥락 결과 없음",
@@ -221,6 +221,10 @@ export default function HomePage() {
       ]);
     });
   }, [personProfiles, selectedRealtimePerson]);
+
+  useEffect(() => {
+    realtimeSituationRef.current = realtimeReceivedMessage;
+  }, [realtimeReceivedMessage]);
 
   useEffect(() => {
     if (selectedView !== "manual") setShowManualResults(false);
