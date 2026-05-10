@@ -18,8 +18,7 @@
     "electron-store": "^8.2.0",
     "framer-motion": "^12.38.0",
     "jimp": "^1.6.0",
-    "screenshot-desktop": "^1.15.3",
-    "tesseract.js": "^7.0.0"
+    "screenshot-desktop": "^1.15.3"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.2.2",

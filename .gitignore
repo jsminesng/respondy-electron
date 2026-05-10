@@ -11,6 +11,7 @@ next-env.d.ts
 # build
 /app
 dist
+debug-captures/
 
 # env
 .env

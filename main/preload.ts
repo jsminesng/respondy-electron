@@ -24,11 +24,32 @@ const respondy: RespondyApi = {
   generateReplies(payload) {
     return ipcRenderer.invoke("generate-replies", payload);
   },
+  login(payload) {
+    return ipcRenderer.invoke("auth:login", payload);
+  },
+  signup(payload) {
+    return ipcRenderer.invoke("auth:signup", payload);
+  },
+  logout() {
+    return ipcRenderer.invoke("auth:logout");
+  },
+  getAuthState() {
+    return ipcRenderer.invoke("auth:get-state");
+  },
   hideOverlay() {
     ipcRenderer.send("overlay:hide");
   },
   showOverlay() {
     ipcRenderer.send("overlay:show");
+  },
+  startRealtimeDetection(): Promise<void> {
+    return ipcRenderer.invoke("ocr:start");
+  },
+  stopRealtimeDetection(): Promise<void> {
+    return ipcRenderer.invoke("ocr:stop");
+  },
+  getRealtimeDetectionState(): Promise<{ active: boolean }> {
+    return ipcRenderer.invoke("ocr:get-runtime-state");
   },
   getOcrSettings(): Promise<OcrSettings> {
     return ipcRenderer.invoke("ocr:get-settings");

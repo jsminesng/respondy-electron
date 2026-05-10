@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
+import { getRespondy } from '../lib/respondy-client'
 
 type AuthView = 'login' | 'signup'
 type AppView = 'realtime' | 'manual' | 'chat' | 'mypage' | 'help'
@@ -152,13 +153,28 @@ export default function HomePage() {
   useEffect(() => {
     if (selectedView !== 'realtime') {
       setShowRealtimeResults(false)
-      setIsRealtimeMonitoring(false)
+      void stopRealtimeDetection()
     }
   }, [selectedView])
 
   useEffect(() => {
     if (selectedView !== 'manual') setShowManualResults(false)
   }, [selectedView])
+
+  useEffect(() => {
+    const respondy = getRespondy()
+    if (!respondy) return
+    void respondy
+      .getRealtimeDetectionState()
+      .then((state) => setIsRealtimeMonitoring(Boolean(state?.active)))
+      .catch(() => {})
+  }, [])
+
+  useEffect(() => {
+    return () => {
+      void getRespondy()?.stopRealtimeDetection()
+    }
+  }, [])
 
   useEffect(() => {
     setHistoryDetailId(null)
@@ -310,6 +326,65 @@ export default function HomePage() {
 
   const clearRealtimeResults = () => setShowRealtimeResults(false)
   const clearManualResults = () => setShowManualResults(false)
+
+  const startRealtimeDetection = async (): Promise<boolean> => {
+    const respondy = getRespondy()
+    if (!respondy) {
+      window.alert('Electron 환경에서만 실시간 감지를 시작할 수 있습니다.')
+      return false
+    }
+    try {
+      await respondy.startRealtimeDetection()
+      setIsRealtimeMonitoring(true)
+      return true
+    } catch (e) {
+      const message =
+        e instanceof Error ? e.message : '실시간 감지를 시작하지 못했습니다.'
+      window.alert(message)
+      return false
+    }
+  }
+
+  const stopRealtimeDetection = async () => {
+    const respondy = getRespondy()
+    try {
+      await respondy?.stopRealtimeDetection()
+    } catch {
+      // ignore stop race during view transitions
+    } finally {
+      setIsRealtimeMonitoring(false)
+    }
+  }
+
+  const handleRealtimeMonitoringToggle = async () => {
+    if (isRealtimeMonitoring) {
+      await stopRealtimeDetection()
+      return
+    }
+
+    const started = await startRealtimeDetection()
+    if (!started) return
+
+    if (!realtimeFormReady) return
+    const id = `rt-${Date.now()}`
+    setAnalysisHistory((h) => [
+      {
+        id,
+        at: Date.now(),
+        source: 'realtime',
+        title: `${selectedRealtimePerson.trim()}와의 실시간 대화`,
+        relation: selectedRealtimeProfile?.currentRelation?.trim() || '—',
+        goalRelation: selectedRealtimeProfile?.goalRelation?.trim() || '—',
+        situation: realtimeReceivedMessage.trim(),
+        receivedMessage: realtimeReceivedMessage.trim(),
+        emotion: REALTIME_RESULT.emotion,
+        context: REALTIME_RESULT.context,
+        suggestions: [...REALTIME_RESULT.suggestions],
+      },
+      ...h,
+    ])
+    setShowRealtimeResults(true)
+  }
 
   const realtimeFormReady =
     selectedRealtimePerson.trim() && realtimeReceivedMessage.trim()
@@ -588,32 +663,7 @@ export default function HomePage() {
         <button
           className={`respondy-primary-btn ${isRealtimeMonitoring ? 'respondy-danger-btn' : ''}`}
           type="button"
-          onClick={() => {
-            if (isRealtimeMonitoring) {
-              setIsRealtimeMonitoring(false)
-              return
-            }
-            if (!realtimeFormReady) return
-            const id = `rt-${Date.now()}`
-            setAnalysisHistory((h) => [
-              {
-                id,
-                at: Date.now(),
-                source: 'realtime',
-                title: `${selectedRealtimePerson.trim()}와의 실시간 대화`,
-                relation: selectedRealtimeProfile?.currentRelation?.trim() || '—',
-                goalRelation: selectedRealtimeProfile?.goalRelation?.trim() || '—',
-                situation: realtimeReceivedMessage.trim(),
-                receivedMessage: realtimeReceivedMessage.trim(),
-                emotion: REALTIME_RESULT.emotion,
-                context: REALTIME_RESULT.context,
-                suggestions: [...REALTIME_RESULT.suggestions],
-              },
-              ...h,
-            ])
-            setShowRealtimeResults(true)
-            setIsRealtimeMonitoring(true)
-          }}
+          onClick={() => void handleRealtimeMonitoringToggle()}
         >
           {isRealtimeMonitoring ? '종료하기' : '실시간 감지 시작'}
         </button>
@@ -1212,6 +1262,7 @@ export default function HomePage() {
                 className="respondy-logout-btn"
                 type="button"
                 onClick={() => {
+                  void stopRealtimeDetection()
                   setLoggedIn(false)
                   setAuthView('login')
                   setSelectedView('realtime')

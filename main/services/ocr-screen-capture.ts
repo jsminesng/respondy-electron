@@ -8,6 +8,16 @@ import { Jimp, ResizeStrategy } from 'jimp'
 
 const execFileAsync = promisify(execFile)
 const INCOMING_ONLY_WIDTH_RATIO = 0.68
+const FRAME_SIGNATURE_SIZE = 64
+const DEBUG_CAPTURE_DIR = path.join(process.cwd(), 'debug-captures')
+const DEBUG_CAPTURE_PATH = path.join(DEBUG_CAPTURE_DIR, 'latest.png')
+
+export type FrameSignature = {
+  width: number
+  height: number
+  pixels: Buffer
+}
+type JimpImage = Awaited<ReturnType<typeof Jimp.read>>
 
 function clamp(n: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, n))
@@ -17,33 +27,7 @@ function getIncomingOnlyWidth(width: number): number {
   return Math.max(32, Math.floor(width * INCOMING_ONLY_WIDTH_RATIO))
 }
 
-async function preprocessForOcr(imageBuffer: Buffer): Promise<Buffer> {
-  const image = await Jimp.read(imageBuffer)
-  const targetWidth = Math.min(2200, Math.max(64, image.bitmap.width * 3))
-  const targetHeight = Math.min(2200, Math.max(64, image.bitmap.height * 3))
-
-  // 작은 한글 UI 글자는 확대 + 명암 강화 후 이진화해야 인식률이 좋아진다.
-  image
-    .greyscale()
-    .resize({
-      w: targetWidth,
-      h: targetHeight,
-      mode: ResizeStrategy.BEZIER,
-    })
-    .contrast(0.45)
-    .normalize()
-    .convolute([
-      [0, -1, 0],
-      [-1, 5, -1],
-      [0, -1, 0],
-    ])
-    .threshold({ max: 195 })
-
-  const out = await image.getBuffer('image/png')
-  return Buffer.isBuffer(out) ? out : Buffer.from(out)
-}
-
-function cropIncomingOnly(image: Jimp): Jimp {
+function cropIncomingOnly(image: JimpImage): JimpImage {
   image.crop({
     x: 0,
     y: 0,
@@ -51,6 +35,62 @@ function cropIncomingOnly(image: Jimp): Jimp {
     h: image.bitmap.height,
   })
   return image
+}
+
+function shouldSaveDebugCapture(): boolean {
+  return process.env.DEBUG_SAVE_CAPTURE === 'true'
+}
+
+function saveDebugCapture(imageBuffer: Buffer): void {
+  if (!shouldSaveDebugCapture()) return
+
+  try {
+    fs.mkdirSync(DEBUG_CAPTURE_DIR, { recursive: true })
+    fs.writeFileSync(DEBUG_CAPTURE_PATH, imageBuffer)
+  } catch (e) {
+    const message = e instanceof Error ? e.message : String(e)
+    console.warn(`[Respondy] Failed to save debug capture: ${message}`)
+  }
+}
+
+export async function createFrameSignature(
+  imageBuffer: Buffer,
+): Promise<FrameSignature> {
+  const image = await Jimp.read(imageBuffer)
+  image.greyscale().resize({
+    w: FRAME_SIGNATURE_SIZE,
+    h: FRAME_SIGNATURE_SIZE,
+    mode: ResizeStrategy.BILINEAR,
+  })
+
+  const data = image.bitmap.data
+  const pixels = Buffer.alloc(FRAME_SIGNATURE_SIZE * FRAME_SIGNATURE_SIZE)
+  for (let i = 0, p = 0; i < data.length; i += 4, p += 1) {
+    pixels[p] = data[i]
+  }
+
+  return {
+    width: FRAME_SIGNATURE_SIZE,
+    height: FRAME_SIGNATURE_SIZE,
+    pixels,
+  }
+}
+
+export function getFrameDifferenceRatio(
+  a: FrameSignature,
+  b: FrameSignature,
+): number {
+  if (a.width !== b.width || a.height !== b.height) return 1
+
+  const len = Math.min(a.pixels.length, b.pixels.length)
+  if (len === 0) return 1
+
+  let diff = 0
+  for (let i = 0; i < len; i += 1) {
+    diff += Math.abs(a.pixels[i] - b.pixels[i])
+  }
+
+  return diff / (len * 255)
 }
 
 /**
@@ -82,7 +122,8 @@ export async function captureScreenRegion(
         out,
       ])
       const buf = fs.readFileSync(out)
-      return preprocessForOcr(buf)
+      saveDebugCapture(buf)
+      return buf
     } finally {
       try {
         fs.unlinkSync(out)
@@ -110,8 +151,9 @@ export async function captureScreenRegion(
       cropIncomingOnly(image)
     }
     const out = await image.getBuffer('image/png')
-    const cropped = Buffer.isBuffer(out) ? out : Buffer.from(out)
-    return preprocessForOcr(cropped)
+    const buf = Buffer.isBuffer(out) ? out : Buffer.from(out)
+    saveDebugCapture(buf)
+    return buf
   }
 
   throw new Error(

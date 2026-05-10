@@ -38,6 +38,7 @@ if (isProd) {
 let mainWindow: BrowserWindow | null = null
 let overlayWindow: BrowserWindow | null = null
 let ocrLoopHandle: ReturnType<typeof startOcrLoop> | null = null
+let isRealtimeDetectionActive = false
 
 function sendToRenderer(
   win: BrowserWindow | null,
@@ -73,6 +74,7 @@ function showOverlayFromPayload() {
 function restartOcrLoop() {
   ocrLoopHandle?.stop()
   ocrLoopHandle = null
+  if (!isRealtimeDetectionActive) return
   const s = ocrSettingsStore.store
   if (!s.enabled) return
   ocrLoopHandle = startOcrLoop(
@@ -187,6 +189,21 @@ function restartOcrLoop() {
     restartOcrLoop()
   })
 
+  ipcMain.handle('ocr:start', () => {
+    isRealtimeDetectionActive = true
+    restartOcrLoop()
+  })
+
+  ipcMain.handle('ocr:stop', () => {
+    isRealtimeDetectionActive = false
+    ocrLoopHandle?.stop()
+    ocrLoopHandle = null
+  })
+
+  ipcMain.handle('ocr:get-runtime-state', () => ({
+    active: isRealtimeDetectionActive,
+  }))
+
   ipcMain.handle('ocr:get-display-bounds', () => {
     const { bounds } = screen.getPrimaryDisplay()
     return {
@@ -206,7 +223,7 @@ function restartOcrLoop() {
     await overlayWindow.loadURL(`http://localhost:${port}/overlay/`)
   }
 
-  restartOcrLoop()
+  // 실시간 감지 시작 버튼을 누른 이후에만 루프를 시작한다.
 
   app.on('before-quit', () => {
     ocrLoopHandle?.stop()

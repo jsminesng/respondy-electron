@@ -1,8 +1,14 @@
 import type { OcrSettings } from '../../shared/respondy-types'
-import { captureScreenRegion } from './ocr-screen-capture'
-import { recognizeImageText, terminateOcrWorker } from './ocr-tesseract'
+import {
+  captureScreenRegion,
+  createFrameSignature,
+  getFrameDifferenceRatio,
+  type FrameSignature,
+} from './ocr-screen-capture'
+import { extractTextFromImage } from './backend-ocr'
 
 export type OcrLoopHandle = { stop: () => void }
+const FRAME_CHANGE_THRESHOLD = 0.035
 
 function stripKakaoTime(text: string): string {
   return text
@@ -11,7 +17,7 @@ function stripKakaoTime(text: string): string {
 }
 
 /**
- * 주기적으로 화면 영역을 캡처해 OCR → 텍스트가 바뀌었을 때만 콜백.
+ * 주기적으로 화면 영역을 캡처해 프레임 변화가 감지될 때만 OCR을 실행.
  */
 export function startOcrLoop(
   getSettings: () => OcrSettings,
@@ -19,6 +25,7 @@ export function startOcrLoop(
   onError?: (err: Error) => void,
 ): OcrLoopHandle {
   let timer: ReturnType<typeof setInterval> | null = null
+  let lastFrameSignature: FrameSignature | null = null
   let lastNormalized = ''
   let busy = false
 
@@ -30,7 +37,14 @@ export function startOcrLoop(
     busy = true
     try {
       const buf = await captureScreenRegion(s.region, s.incomingOnly)
-      const raw = await recognizeImageText(buf)
+      const signature = await createFrameSignature(buf)
+      if (lastFrameSignature) {
+        const diffRatio = getFrameDifferenceRatio(lastFrameSignature, signature)
+        if (diffRatio < FRAME_CHANGE_THRESHOLD) return
+      }
+      lastFrameSignature = signature
+
+      const raw = await extractTextFromImage(buf)
       const cleaned = stripKakaoTime(raw)
       const norm = cleaned.replace(/\s+/g, ' ').trim()
       if (norm.length < 2) return
@@ -67,8 +81,8 @@ export function startOcrLoop(
         clearInterval(timer)
         timer = null
       }
+      lastFrameSignature = null
       lastNormalized = ''
-      void terminateOcrWorker()
     },
   }
 }

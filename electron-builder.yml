@@ -9,6 +9,4 @@ files:
     filter:
       - package.json
       - app
-asarUnpack:
-  - "**/node_modules/tesseract.js/**"
 publish: null
