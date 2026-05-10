@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { getRespondy } from "../lib/respondy-client";
+import type { AuthState } from "../../shared/respondy-types";
 
 type AuthView = "login" | "signup";
 type AppView = "realtime" | "manual" | "chat" | "mypage" | "help";
@@ -139,6 +140,9 @@ export default function HomePage() {
   const [editPersonGoalRelation, setEditPersonGoalRelation] = useState("");
   const [editPersonPersonality, setEditPersonPersonality] = useState("");
   const [editPersonNotes, setEditPersonNotes] = useState("");
+  const [authBusy, setAuthBusy] = useState(false);
+  const [authReady, setAuthReady] = useState(false);
+  const [authError, setAuthError] = useState<string | null>(null);
   const [copiedSuggestionId, setCopiedSuggestionId] = useState<string | null>(
     null,
   );
@@ -198,6 +202,33 @@ export default function HomePage() {
   }, []);
 
   useEffect(() => {
+    const respondy = getRespondy();
+    if (!respondy) {
+      setAuthReady(true);
+      return;
+    }
+
+    setAuthBusy(true);
+    setAuthError(null);
+    void respondy
+      .getAuthState()
+      .then((state) => {
+        applyAuthState(state);
+      })
+      .catch((e) => {
+        setAuthError(
+          e instanceof Error
+            ? e.message
+            : "인증 상태를 불러오지 못했습니다.",
+        );
+      })
+      .finally(() => {
+        setAuthBusy(false);
+        setAuthReady(true);
+      });
+  }, []);
+
+  useEffect(() => {
     setHistoryDetailId(null);
     setPersonDetailId(null);
   }, [selectedView]);
@@ -211,10 +242,21 @@ export default function HomePage() {
     return () => window.removeEventListener("keydown", onKey);
   }, [historyDetailId]);
 
-  const finishAuth = (opts?: { displayName?: string }) => {
-    if (opts?.displayName?.trim()) {
-      setUserName(opts.displayName.trim());
+  function applyAuthState(state: AuthState) {
+    if (state.isAuthenticated && state.user) {
+      setLoggedIn(true);
+      if (state.user.username?.trim()) {
+        setUserName(state.user.username.trim());
+      }
+      if (state.user.email?.trim()) {
+        setProfileEmail(state.user.email.trim());
+      }
+      return;
     }
+    setLoggedIn(false);
+  }
+
+  const resetSessionUi = () => {
     setRealtimeReceivedMessage("");
     setPersonProfiles([]);
     setSelectedRealtimePerson("");
@@ -232,22 +274,107 @@ export default function HomePage() {
     setManualSituation("");
     setManualReceivedMessage("");
     setShowManualResults(false);
-    setLoggedIn(true);
     setSelectedView("realtime");
   };
 
-  const handleLoginSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+  const handleLoginSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    finishAuth();
+    const respondy = getRespondy();
+    if (!respondy) {
+      setAuthError("Electron 환경에서만 백엔드 로그인을 사용할 수 있습니다.");
+      return;
+    }
+
+    const form = event.currentTarget;
+    const usernameField = form.elements.namedItem("login-email");
+    const passwordField = form.elements.namedItem("login-password");
+    const username =
+      usernameField instanceof HTMLInputElement ? usernameField.value.trim() : "";
+    const password =
+      passwordField instanceof HTMLInputElement ? passwordField.value : "";
+    if (!username || !password) {
+      setAuthError("아이디(또는 이메일)와 비밀번호를 입력해 주세요.");
+      return;
+    }
+
+    setAuthBusy(true);
+    setAuthError(null);
+    try {
+      const state = await respondy.login({ username, password });
+      applyAuthState(state);
+      resetSessionUi();
+      setProfilePassword(password);
+      form.reset();
+    } catch (e) {
+      setAuthError(e instanceof Error ? e.message : "로그인에 실패했습니다.");
+    } finally {
+      setAuthBusy(false);
+    }
   };
 
-  const handleSignupSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+  const handleSignupSubmit = async (
+    event: React.FormEvent<HTMLFormElement>,
+  ) => {
     event.preventDefault();
+    const respondy = getRespondy();
+    if (!respondy) {
+      setAuthError("Electron 환경에서만 회원가입을 사용할 수 있습니다.");
+      return;
+    }
+
     const form = event.currentTarget;
     const nameField = form.elements.namedItem("signup-name");
-    const displayName =
-      nameField instanceof HTMLInputElement ? nameField.value : undefined;
-    finishAuth({ displayName });
+    const emailField = form.elements.namedItem("signup-email");
+    const passwordField = form.elements.namedItem("signup-password");
+    const confirmPasswordField = form.elements.namedItem(
+      "signup-password-confirm",
+    );
+    const birthDateField = form.elements.namedItem("signup-birthdate");
+    const username =
+      nameField instanceof HTMLInputElement ? nameField.value.trim() : "";
+    const email =
+      emailField instanceof HTMLInputElement ? emailField.value.trim() : "";
+    const password =
+      passwordField instanceof HTMLInputElement ? passwordField.value : "";
+    const confirmPassword =
+      confirmPasswordField instanceof HTMLInputElement
+        ? confirmPasswordField.value
+        : "";
+    const birthDate =
+      birthDateField instanceof HTMLInputElement
+        ? birthDateField.value.trim()
+        : "";
+    if (!username || !password) {
+      setAuthError("이름(아이디)과 비밀번호를 입력해 주세요.");
+      return;
+    }
+    if (!birthDate) {
+      setAuthError("생년월일을 입력해 주세요.");
+      return;
+    }
+    if (password !== confirmPassword) {
+      setAuthError("비밀번호와 비밀번호 확인이 일치하지 않습니다.");
+      return;
+    }
+
+    setAuthBusy(true);
+    setAuthError(null);
+    try {
+      const state = await respondy.signup({
+        username,
+        email: email || undefined,
+        password,
+      });
+      applyAuthState(state);
+      resetSessionUi();
+      setProfilePassword(password);
+      setProfileBirthDate(birthDate);
+      form.reset();
+    } catch (e) {
+      setAuthError(e instanceof Error ? e.message : "회원가입에 실패했습니다.");
+    } finally {
+      setAuthBusy(false);
+    }
   };
 
   const renderAuthCard = () => {
@@ -267,6 +394,7 @@ export default function HomePage() {
             name="signup-name"
             className="respondy-input"
             autoComplete="name"
+            disabled={authBusy}
           />
           <label className="respondy-label" htmlFor="signup-email">
             이메일 주소
@@ -277,6 +405,7 @@ export default function HomePage() {
             className="respondy-input"
             type="email"
             autoComplete="email"
+            disabled={authBusy}
           />
           <label className="respondy-label" htmlFor="signup-password">
             비밀번호
@@ -287,9 +416,31 @@ export default function HomePage() {
             className="respondy-input"
             type="password"
             autoComplete="new-password"
+            disabled={authBusy}
           />
-          <button className="respondy-primary-btn" type="submit">
-            회원가입
+          <label className="respondy-label" htmlFor="signup-password-confirm">
+            비밀번호 확인
+          </label>
+          <input
+            id="signup-password-confirm"
+            name="signup-password-confirm"
+            className="respondy-input"
+            type="password"
+            autoComplete="new-password"
+            disabled={authBusy}
+          />
+          <label className="respondy-label" htmlFor="signup-birthdate">
+            생년월일
+          </label>
+          <input
+            id="signup-birthdate"
+            name="signup-birthdate"
+            className="respondy-input"
+            type="date"
+            disabled={authBusy}
+          />
+          <button className="respondy-primary-btn" type="submit" disabled={authBusy}>
+            {authBusy ? "처리 중..." : "회원가입"}
           </button>
           <p className="respondy-helper-text respondy-helper-text--compact">
             이미 계정이 있으신가요?{" "}
@@ -297,10 +448,16 @@ export default function HomePage() {
               type="button"
               className="respondy-link-btn"
               onClick={() => setAuthView("login")}
+              disabled={authBusy}
             >
               로그인
             </button>
           </p>
+          {authError && (
+            <p className="respondy-helper-text respondy-helper-text--inline">
+              {authError}
+            </p>
+          )}
         </form>
       );
     }
@@ -313,14 +470,15 @@ export default function HomePage() {
       >
         <h2 className="respondy-title">로그인</h2>
         <label className="respondy-label" htmlFor="login-email">
-          이메일 주소
+          아이디 또는 이메일
         </label>
         <input
           id="login-email"
           name="login-email"
           className="respondy-input"
-          type="email"
-          autoComplete="email"
+          type="text"
+          autoComplete="username"
+          disabled={authBusy}
         />
         <label className="respondy-label" htmlFor="login-password">
           비밀번호
@@ -331,9 +489,10 @@ export default function HomePage() {
           className="respondy-input"
           type="password"
           autoComplete="current-password"
+          disabled={authBusy}
         />
-        <button className="respondy-primary-btn" type="submit">
-          로그인
+        <button className="respondy-primary-btn" type="submit" disabled={authBusy}>
+          {authBusy ? "처리 중..." : "로그인"}
         </button>
         <p className="respondy-helper-text">
           계정이 없으신가요?{" "}
@@ -341,10 +500,16 @@ export default function HomePage() {
             type="button"
             className="respondy-link-btn"
             onClick={() => setAuthView("signup")}
+            disabled={authBusy}
           >
             회원가입
           </button>
         </p>
+        {authError && (
+          <p className="respondy-helper-text respondy-helper-text--inline">
+            {authError}
+          </p>
+        )}
       </form>
     );
   };
@@ -1338,6 +1503,16 @@ export default function HomePage() {
   );
 
   const renderMainContent = () => {
+    if (!authReady) {
+      return (
+        <section className="respondy-center respondy-center--auth">
+          <article className="respondy-card respondy-auth-card">
+            <p className="respondy-helper-text">로그인 상태를 확인하는 중...</p>
+          </article>
+        </section>
+      );
+    }
+
     if (!loggedIn) {
       return (
         <section className="respondy-center respondy-center--auth">
@@ -1413,13 +1588,30 @@ export default function HomePage() {
               <button
                 className="respondy-logout-btn"
                 type="button"
+                disabled={authBusy}
                 onClick={() => {
-                  void stopRealtimeDetection();
-                  setLoggedIn(false);
-                  setAuthView("login");
-                  setSelectedView("realtime");
-                  setAnalysisHistory([]);
-                  setHistoryDetailId(null);
+                  void (async () => {
+                    const respondy = getRespondy();
+                    setAuthBusy(true);
+                    setAuthError(null);
+                    try {
+                      await respondy?.logout();
+                    } catch (e) {
+                      const message =
+                        e instanceof Error
+                          ? e.message
+                          : "로그아웃에 실패했습니다.";
+                      setAuthError(message);
+                    } finally {
+                      void stopRealtimeDetection();
+                      setLoggedIn(false);
+                      setAuthView("login");
+                      setSelectedView("realtime");
+                      setAnalysisHistory([]);
+                      setHistoryDetailId(null);
+                      setAuthBusy(false);
+                    }
+                  })();
                 }}
               >
                 로그아웃
@@ -1431,7 +1623,9 @@ export default function HomePage() {
         </div>
       </header>
 
-      <main className="respondy-main">{renderMainContent()}</main>
+      <main className={`respondy-main${!loggedIn ? " respondy-main--auth" : ""}`}>
+        {renderMainContent()}
+      </main>
 
       {loggedIn && showProfileEditModal && (
         <div

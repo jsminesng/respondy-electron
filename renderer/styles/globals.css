@@ -36,7 +36,7 @@
 
   /* 로그인 화면: 뷰포트 한 장에 맞춤, 이 화면만 세로 스크롤 없음 */
   .respondy-shell--auth {
-    @apply h-dvh max-h-dvh min-h-0 overflow-hidden overscroll-none pb-0 pt-6 sm:pt-8;
+    @apply min-h-screen h-auto max-h-none overflow-x-hidden overflow-y-auto overscroll-contain pb-4 pt-6 sm:pt-8;
   }
 
   .respondy-shell--auth .respondy-header {
@@ -88,8 +88,8 @@
   }
 
   /* 로그인 전: 헤더 아래 남는 높이 안에서 카드 세로 중앙, 스크롤 없음 */
-  .respondy-main:has(.respondy-center--auth) {
-    @apply flex min-h-0 flex-1 flex-col justify-center overflow-hidden pt-0 pb-4 sm:pb-6;
+  .respondy-main--auth {
+    @apply flex min-h-0 flex-1 flex-col justify-start overflow-y-auto pt-0 pb-4 sm:pb-6;
   }
 
   .respondy-center {
@@ -121,7 +121,7 @@
   }
 
   .respondy-center--auth {
-    @apply w-full shrink-0 py-2 sm:py-4;
+    @apply w-full shrink-0 py-4 sm:py-6;
   }
 
   .respondy-auth-card {
