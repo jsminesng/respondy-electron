@@ -278,9 +278,7 @@ export default function HomePage() {
       })
       .catch((e) => {
         setAuthError(
-          e instanceof Error
-            ? e.message
-            : "인증 상태를 불러오지 못했습니다.",
+          e instanceof Error ? e.message : "인증 상태를 불러오지 못했습니다.",
         );
       })
       .finally(() => {
@@ -406,7 +404,9 @@ export default function HomePage() {
     const usernameField = form.elements.namedItem("login-email");
     const passwordField = form.elements.namedItem("login-password");
     const username =
-      usernameField instanceof HTMLInputElement ? usernameField.value.trim() : "";
+      usernameField instanceof HTMLInputElement
+        ? usernameField.value.trim()
+        : "";
     const password =
       passwordField instanceof HTMLInputElement ? passwordField.value : "";
     if (!username || !password) {
@@ -568,7 +568,11 @@ export default function HomePage() {
             type="date"
             disabled={authBusy}
           />
-          <button className="respondy-primary-btn" type="submit" disabled={authBusy}>
+          <button
+            className="respondy-primary-btn"
+            type="submit"
+            disabled={authBusy}
+          >
             {authBusy ? "처리 중..." : "회원가입"}
           </button>
           <p className="respondy-helper-text respondy-helper-text--compact">
@@ -621,7 +625,11 @@ export default function HomePage() {
           autoComplete="current-password"
           disabled={authBusy}
         />
-        <button className="respondy-primary-btn" type="submit" disabled={authBusy}>
+        <button
+          className="respondy-primary-btn"
+          type="submit"
+          disabled={authBusy}
+        >
           {authBusy ? "처리 중..." : "로그인"}
         </button>
         <p className="respondy-helper-text">
@@ -965,7 +973,8 @@ export default function HomePage() {
         ),
       );
 
-      if (selectedRealtimePerson === prevName) setSelectedRealtimePerson(nextName);
+      if (selectedRealtimePerson === prevName)
+        setSelectedRealtimePerson(nextName);
       if (selectedManualPerson === prevName) setSelectedManualPerson(nextName);
       if (selectedChatPerson === prevName) setSelectedChatPerson(nextName);
       closePersonDetailModal();
@@ -1788,7 +1797,9 @@ export default function HomePage() {
         </div>
       </header>
 
-      <main className={`respondy-main${!loggedIn ? " respondy-main--auth" : ""}`}>
+      <main
+        className={`respondy-main${!loggedIn ? " respondy-main--auth" : ""}`}
+      >
         {renderMainContent()}
       </main>
 
