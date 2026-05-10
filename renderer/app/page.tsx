@@ -2,7 +2,11 @@
 
 import { useEffect, useRef, useState } from "react";
 import { getRespondy } from "../lib/respondy-client";
-import type { AuthState, NotificationPayload } from "../../shared/respondy-types";
+import type {
+  AuthState,
+  AvatarProfile as BackendAvatarProfile,
+  NotificationPayload,
+} from "../../shared/respondy-types";
 
 type AuthView = "login" | "signup";
 type AppView = "realtime" | "manual" | "chat" | "mypage" | "help";
@@ -65,6 +69,19 @@ function formatChatTime(ts: number) {
     hour: "2-digit",
     minute: "2-digit",
   });
+}
+
+function toPersonProfile(avatar: BackendAvatarProfile): PersonProfile {
+  return {
+    id: String(avatar.id),
+    name: avatar.name,
+    birthDate: avatar.ageGroup,
+    currentRelation: avatar.currentRelation,
+    goalRelation: avatar.targetRelation,
+    personality: avatar.personality,
+    notes: avatar.memo,
+    createdAt: avatar.createdAt,
+  };
 }
 
 const EMPTY_REALTIME_RESULT = {
@@ -273,6 +290,14 @@ export default function HomePage() {
   }, []);
 
   useEffect(() => {
+    if (!loggedIn) {
+      setPersonProfiles([]);
+      return;
+    }
+    void loadPersonProfiles();
+  }, [loggedIn]);
+
+  useEffect(() => {
     setHistoryDetailId(null);
     setPersonDetailId(null);
   }, [selectedView]);
@@ -322,6 +347,38 @@ export default function HomePage() {
     setSelectedView("realtime");
   };
 
+  const loadPersonProfiles = async () => {
+    const respondy = getRespondy();
+    if (!respondy) return;
+    try {
+      const avatars = await respondy.listAvatars();
+      const profiles = avatars.map(toPersonProfile);
+      setPersonProfiles(profiles);
+      if (
+        selectedRealtimePerson &&
+        !profiles.some((person) => person.name === selectedRealtimePerson)
+      ) {
+        setSelectedRealtimePerson("");
+      }
+      if (
+        selectedManualPerson &&
+        !profiles.some((person) => person.name === selectedManualPerson)
+      ) {
+        setSelectedManualPerson("");
+      }
+      if (
+        selectedChatPerson &&
+        !profiles.some((person) => person.name === selectedChatPerson)
+      ) {
+        setSelectedChatPerson("");
+      }
+    } catch (e) {
+      const message =
+        e instanceof Error ? e.message : "인물 목록을 불러오지 못했습니다.";
+      setAuthError(message);
+    }
+  };
+
   const handleLoginSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const respondy = getRespondy();
@@ -348,6 +405,7 @@ export default function HomePage() {
       const state = await respondy.login({ username, password });
       applyAuthState(state);
       resetSessionUi();
+      await loadPersonProfiles();
       setProfilePassword(password);
       form.reset();
     } catch (e) {
@@ -412,6 +470,7 @@ export default function HomePage() {
       });
       applyAuthState(state);
       resetSessionUi();
+      await loadPersonProfiles();
       setProfilePassword(password);
       setProfileBirthDate(birthDate);
       form.reset();
@@ -572,12 +631,16 @@ export default function HomePage() {
       return false;
     }
     try {
+      const selectedProfile = personProfiles.find(
+        (person) => person.name === selectedRealtimePerson,
+      );
       await respondy.startRealtimeDetection({
         title: selectedRealtimePerson.trim()
           ? `${selectedRealtimePerson.trim()} 실시간 분석`
           : "Respondy 실시간 분석",
         situationContext: realtimeReceivedMessage.trim(),
         analysisGoal: "상대 메시지 맥락 기반 답장 추천",
+        avatarId: selectedProfile ? Number(selectedProfile.id) : null,
       });
       setIsRealtimeMonitoring(true);
       return true;
@@ -784,7 +847,12 @@ export default function HomePage() {
     window.alert("비밀번호가 변경되었습니다.");
   };
 
-  const createPersonProfile = () => {
+  const createPersonProfile = async () => {
+    const respondy = getRespondy();
+    if (!respondy) {
+      window.alert("Electron 환경에서만 인물 생성이 가능합니다.");
+      return;
+    }
     const personName = newPersonName.trim();
     if (!personName) return;
     const existingPerson = personProfiles.find(
@@ -797,24 +865,27 @@ export default function HomePage() {
       closePersonCreateModal();
       return;
     }
-    setPersonProfiles((prev) => [
-      ...prev,
-      {
-        id: `person-${Date.now()}`,
+    try {
+      const created = await respondy.createAvatar({
         name: personName,
-        birthDate: newPersonBirthDate,
+        ageGroup: newPersonBirthDate,
         currentRelation: newPersonCurrentRelation.trim(),
-        goalRelation: newPersonGoalRelation.trim(),
+        targetRelation: newPersonGoalRelation.trim(),
         personality: newPersonPersonality.trim(),
-        notes: newPersonNotes.trim(),
-        createdAt: Date.now(),
-      },
-    ]);
-    setSelectedRealtimePerson(personName);
-    setSelectedManualPerson(personName);
-    setSelectedChatPerson(personName);
-    closePersonCreateModal();
-    clearRealtimeResults();
+        memo: newPersonNotes.trim(),
+      });
+      const nextProfile = toPersonProfile(created);
+      setPersonProfiles((prev) => [...prev, nextProfile]);
+      setSelectedRealtimePerson(nextProfile.name);
+      setSelectedManualPerson(nextProfile.name);
+      setSelectedChatPerson(nextProfile.name);
+      closePersonCreateModal();
+      clearRealtimeResults();
+    } catch (e) {
+      const message =
+        e instanceof Error ? e.message : "인물 생성 중 오류가 발생했습니다.";
+      window.alert(message);
+    }
   };
 
   const openPersonDetailModal = (person: PersonProfile) => {
@@ -837,7 +908,12 @@ export default function HomePage() {
     setEditPersonNotes("");
   };
 
-  const savePersonDetail = () => {
+  const savePersonDetail = async () => {
+    const respondy = getRespondy();
+    if (!respondy) {
+      window.alert("Electron 환경에서만 인물 수정이 가능합니다.");
+      return;
+    }
     if (!personDetailId) return;
     const nextName = editPersonName.trim();
     if (!nextName) return;
@@ -847,27 +923,31 @@ export default function HomePage() {
     if (!originalPerson) return;
 
     const prevName = originalPerson.name;
-    setPersonProfiles((prev) =>
-      prev.map((person) =>
-        person.id === personDetailId
-          ? {
-              ...person,
-              name: nextName,
-              birthDate: editPersonBirthDate,
-              currentRelation: editPersonCurrentRelation.trim(),
-              goalRelation: editPersonGoalRelation.trim(),
-              personality: editPersonPersonality.trim(),
-              notes: editPersonNotes.trim(),
-            }
-          : person,
-      ),
-    );
+    try {
+      const updated = await respondy.updateAvatar(Number(personDetailId), {
+        name: nextName,
+        ageGroup: editPersonBirthDate,
+        currentRelation: editPersonCurrentRelation.trim(),
+        targetRelation: editPersonGoalRelation.trim(),
+        personality: editPersonPersonality.trim(),
+        memo: editPersonNotes.trim(),
+      });
+      const nextProfile = toPersonProfile(updated);
+      setPersonProfiles((prev) =>
+        prev.map((person) =>
+          person.id === personDetailId ? { ...person, ...nextProfile } : person,
+        ),
+      );
 
-    if (selectedRealtimePerson === prevName)
-      setSelectedRealtimePerson(nextName);
-    if (selectedManualPerson === prevName) setSelectedManualPerson(nextName);
-    if (selectedChatPerson === prevName) setSelectedChatPerson(nextName);
-    closePersonDetailModal();
+      if (selectedRealtimePerson === prevName) setSelectedRealtimePerson(nextName);
+      if (selectedManualPerson === prevName) setSelectedManualPerson(nextName);
+      if (selectedChatPerson === prevName) setSelectedChatPerson(nextName);
+      closePersonDetailModal();
+    } catch (e) {
+      const message =
+        e instanceof Error ? e.message : "인물 수정 중 오류가 발생했습니다.";
+      window.alert(message);
+    }
   };
 
   const removeAnalysisRecord = (recordId: string) => {
@@ -878,17 +958,29 @@ export default function HomePage() {
     if (historyDetailId === recordId) setHistoryDetailId(null);
   };
 
-  const removePersonProfile = (personId: string) => {
+  const removePersonProfile = async (personId: string) => {
+    const respondy = getRespondy();
+    if (!respondy) {
+      window.alert("Electron 환경에서만 인물 삭제가 가능합니다.");
+      return;
+    }
     if (!window.confirm("삭제하시겠습니까?")) return;
     const target = personProfiles.find((person) => person.id === personId);
     if (!target) return;
-    setPersonProfiles((prev) =>
-      prev.filter((person) => person.id !== personId),
-    );
-    if (selectedRealtimePerson === target.name) setSelectedRealtimePerson("");
-    if (selectedManualPerson === target.name) setSelectedManualPerson("");
-    if (selectedChatPerson === target.name) setSelectedChatPerson("");
-    if (personDetailId === personId) closePersonDetailModal();
+    try {
+      await respondy.deleteAvatar(Number(personId));
+      setPersonProfiles((prev) =>
+        prev.filter((person) => person.id !== personId),
+      );
+      if (selectedRealtimePerson === target.name) setSelectedRealtimePerson("");
+      if (selectedManualPerson === target.name) setSelectedManualPerson("");
+      if (selectedChatPerson === target.name) setSelectedChatPerson("");
+      if (personDetailId === personId) closePersonDetailModal();
+    } catch (e) {
+      const message =
+        e instanceof Error ? e.message : "인물 삭제 중 오류가 발생했습니다.";
+      window.alert(message);
+    }
   };
 
   const renderRealtimeView = () => (
@@ -1465,7 +1557,7 @@ export default function HomePage() {
                     className="respondy-item-delete-btn"
                     onClick={(e) => {
                       e.stopPropagation();
-                      removePersonProfile(person.id);
+                      void removePersonProfile(person.id);
                     }}
                   >
                     삭제
@@ -2018,7 +2110,7 @@ export default function HomePage() {
                 <button
                   type="button"
                   className="respondy-primary-btn respondy-modal-primary-btn"
-                  onClick={createPersonProfile}
+                  onClick={() => void createPersonProfile()}
                   disabled={!newPersonName.trim()}
                 >
                   인물 생성
@@ -2164,7 +2256,7 @@ export default function HomePage() {
                 <button
                   type="button"
                   className="respondy-primary-btn respondy-modal-primary-btn"
-                  onClick={savePersonDetail}
+                  onClick={() => void savePersonDetail()}
                   disabled={!editPersonName.trim()}
                 >
                   저장하기

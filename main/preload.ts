@@ -1,5 +1,7 @@
 import { contextBridge, ipcRenderer, IpcRendererEvent } from "electron";
 import type {
+  AvatarCreateInput,
+  AvatarUpdateInput,
   DisplayBounds,
   NotificationPayload,
   OcrRegion,
@@ -64,6 +66,18 @@ const respondy: RespondyApi = {
   },
   getDisplayBounds(): Promise<DisplayBounds> {
     return ipcRenderer.invoke("ocr:get-display-bounds");
+  },
+  listAvatars() {
+    return ipcRenderer.invoke("avatar:list");
+  },
+  createAvatar(payload: AvatarCreateInput) {
+    return ipcRenderer.invoke("avatar:create", payload);
+  },
+  updateAvatar(avatarId: number, payload: AvatarUpdateInput) {
+    return ipcRenderer.invoke("avatar:update", avatarId, payload);
+  },
+  deleteAvatar(avatarId: number) {
+    return ipcRenderer.invoke("avatar:delete", avatarId);
   },
 };
 

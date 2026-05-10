@@ -87,6 +87,28 @@ export type RealtimeDetectionStartInput = {
   avatarId?: number | null
 }
 
+export type AvatarProfile = {
+  id: number
+  name: string
+  ageGroup: string
+  currentRelation: string
+  targetRelation: string
+  personality: string
+  memo: string
+  createdAt: number
+}
+
+export type AvatarCreateInput = {
+  name: string
+  ageGroup?: string
+  currentRelation?: string
+  targetRelation?: string
+  personality?: string
+  memo?: string
+}
+
+export type AvatarUpdateInput = AvatarCreateInput
+
 export type RespondyApi = {
   onNotification: (callback: (payload: NotificationPayload) => void) => () => void
   analyzeSentiment: (text: string) => Promise<SentimentResult>
@@ -104,4 +126,8 @@ export type RespondyApi = {
   getOcrSettings: () => Promise<OcrSettings>
   setOcrSettings: (partial: Partial<OcrSettings>) => Promise<void>
   getDisplayBounds: () => Promise<DisplayBounds>
+  listAvatars: () => Promise<AvatarProfile[]>
+  createAvatar: (payload: AvatarCreateInput) => Promise<AvatarProfile>
+  updateAvatar: (avatarId: number, payload: AvatarUpdateInput) => Promise<AvatarProfile>
+  deleteAvatar: (avatarId: number) => Promise<void>
 }

@@ -24,6 +24,12 @@ import {
 import { ocrSettingsStore } from './services/ocr-settings'
 import { startOcrLoop } from './services/ocr-loop'
 import { createRealtimeSession } from './services/backend-session'
+import {
+  createAvatar,
+  deleteAvatar,
+  listAvatars,
+  updateAvatar,
+} from './services/backend-avatar'
 
 const isProd = process.env.NODE_ENV === 'production'
 
@@ -286,6 +292,15 @@ function completeRegionPicker(region: OcrRegion | null) {
       height: bounds.height,
     }
   })
+
+  ipcMain.handle('avatar:list', () => listAvatars())
+  ipcMain.handle('avatar:create', (_evt, payload) => createAvatar(payload))
+  ipcMain.handle('avatar:update', (_evt, avatarId: number, payload) =>
+    updateAvatar(avatarId, payload),
+  )
+  ipcMain.handle('avatar:delete', (_evt, avatarId: number) =>
+    deleteAvatar(avatarId),
+  )
 
   if (isProd) {
     await mainWindow.loadURL('app://./')
