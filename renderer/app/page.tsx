@@ -409,7 +409,17 @@ export default function HomePage() {
       setProfilePassword(password);
       form.reset();
     } catch (e) {
-      setAuthError(e instanceof Error ? e.message : "로그인에 실패했습니다.");
+      const message = e instanceof Error ? e.message : "로그인에 실패했습니다.";
+      if (
+        username.includes("@") &&
+        /invalid username or password/i.test(message)
+      ) {
+        setAuthError(
+          "현재 서버는 이메일 로그인 대신 아이디 로그인을 사용합니다. 회원가입 때 입력한 이름(아이디)으로 로그인해 주세요.",
+        );
+      } else {
+        setAuthError(message);
+      }
     } finally {
       setAuthBusy(false);
     }
@@ -574,7 +584,7 @@ export default function HomePage() {
       >
         <h2 className="respondy-title">로그인</h2>
         <label className="respondy-label" htmlFor="login-email">
-          아이디 또는 이메일
+          아이디
         </label>
         <input
           id="login-email"
@@ -583,6 +593,7 @@ export default function HomePage() {
           type="text"
           autoComplete="username"
           disabled={authBusy}
+          placeholder="회원가입 때 입력한 아이디"
         />
         <label className="respondy-label" htmlFor="login-password">
           비밀번호
@@ -1476,11 +1487,18 @@ export default function HomePage() {
         ) : (
           <div className="respondy-history-list">
             {analysisHistory.map((rec) => (
-              <button
+              <div
                 key={rec.id}
-                type="button"
+                role="button"
+                tabIndex={0}
                 className="respondy-history-item respondy-history-item--button"
                 onClick={() => setHistoryDetailId(rec.id)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    setHistoryDetailId(rec.id);
+                  }
+                }}
               >
                 <div className="respondy-history-item-top">
                   <time
@@ -1517,7 +1535,7 @@ export default function HomePage() {
                     삭제
                   </button>
                 </div>
-              </button>
+              </div>
             ))}
           </div>
         )}
@@ -1534,11 +1552,18 @@ export default function HomePage() {
         ) : (
           <div className="respondy-person-list">
             {personProfiles.map((person) => (
-              <button
+              <div
                 key={person.id}
-                type="button"
+                role="button"
+                tabIndex={0}
                 className="respondy-history-item respondy-history-item--button respondy-person-item-btn"
                 onClick={() => openPersonDetailModal(person)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    openPersonDetailModal(person);
+                  }
+                }}
               >
                 <div className="respondy-history-item-top">
                   <span className="respondy-person-name">{person.name}</span>
@@ -1563,7 +1588,7 @@ export default function HomePage() {
                     삭제
                   </button>
                 </div>
-              </button>
+              </div>
             ))}
           </div>
         )}
