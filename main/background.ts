@@ -30,6 +30,7 @@ import {
   listAvatars,
   updateAvatar,
 } from './services/backend-avatar'
+import { listAnalysisHistory } from './services/backend-history'
 
 const isProd = process.env.NODE_ENV === 'production'
 
@@ -301,6 +302,7 @@ function completeRegionPicker(region: OcrRegion | null) {
   ipcMain.handle('avatar:delete', (_evt, avatarId: number) =>
     deleteAvatar(avatarId),
   )
+  ipcMain.handle('analysis:history:list', () => listAnalysisHistory())
 
   if (isProd) {
     await mainWindow.loadURL('app://./')

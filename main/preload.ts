@@ -79,6 +79,9 @@ const respondy: RespondyApi = {
   deleteAvatar(avatarId: number) {
     return ipcRenderer.invoke("avatar:delete", avatarId);
   },
+  listAnalysisHistory() {
+    return ipcRenderer.invoke("analysis:history:list");
+  },
 };
 
 contextBridge.exposeInMainWorld("respondy", respondy);

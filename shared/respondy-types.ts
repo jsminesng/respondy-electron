@@ -109,6 +109,20 @@ export type AvatarCreateInput = {
 
 export type AvatarUpdateInput = AvatarCreateInput
 
+export type AnalysisHistoryRecord = {
+  id: string
+  at: number
+  source: 'realtime' | 'manual'
+  title: string
+  relation: string
+  goalRelation: string
+  situation: string
+  receivedMessage?: string
+  emotion: string
+  context: string
+  suggestions: string[]
+}
+
 export type RespondyApi = {
   onNotification: (callback: (payload: NotificationPayload) => void) => () => void
   analyzeSentiment: (text: string) => Promise<SentimentResult>
@@ -130,4 +144,5 @@ export type RespondyApi = {
   createAvatar: (payload: AvatarCreateInput) => Promise<AvatarProfile>
   updateAvatar: (avatarId: number, payload: AvatarUpdateInput) => Promise<AvatarProfile>
   deleteAvatar: (avatarId: number) => Promise<void>
+  listAnalysisHistory: () => Promise<AnalysisHistoryRecord[]>
 }

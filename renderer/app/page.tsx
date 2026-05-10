@@ -292,9 +292,11 @@ export default function HomePage() {
   useEffect(() => {
     if (!loggedIn) {
       setPersonProfiles([]);
+      setAnalysisHistory([]);
       return;
     }
     void loadPersonProfiles();
+    void loadAnalysisHistory();
   }, [loggedIn]);
 
   useEffect(() => {
@@ -375,6 +377,19 @@ export default function HomePage() {
     } catch (e) {
       const message =
         e instanceof Error ? e.message : "인물 목록을 불러오지 못했습니다.";
+      setAuthError(message);
+    }
+  };
+
+  const loadAnalysisHistory = async () => {
+    const respondy = getRespondy();
+    if (!respondy) return;
+    try {
+      const history = await respondy.listAnalysisHistory();
+      setAnalysisHistory(history);
+    } catch (e) {
+      const message =
+        e instanceof Error ? e.message : "분석 기록을 불러오지 못했습니다.";
       setAuthError(message);
     }
   };
