@@ -37,6 +37,13 @@ function cropIncomingOnly(image: JimpImage): JimpImage {
   return image
 }
 
+async function cropIncomingOnlyBuffer(imageBuffer: Buffer): Promise<Buffer> {
+  const image = await Jimp.read(imageBuffer)
+  cropIncomingOnly(image)
+  const out = await image.getBuffer('image/png')
+  return Buffer.isBuffer(out) ? out : Buffer.from(out)
+}
+
 function shouldSaveDebugCapture(): boolean {
   return process.env.DEBUG_SAVE_CAPTURE === 'true'
 }
@@ -105,7 +112,6 @@ export async function captureScreenRegion(
   const h = Math.max(8, Math.floor(region.height))
   const x = Math.floor(region.x)
   const y = Math.floor(region.y)
-  const captureWidth = incomingOnly ? getIncomingOnlyWidth(w) : w
 
   if (process.platform === 'darwin') {
     const out = path.join(
@@ -116,14 +122,15 @@ export async function captureScreenRegion(
       await execFileAsync('/usr/sbin/screencapture', [
         '-x',
         '-R',
-        `${x},${y},${captureWidth},${h}`,
+        `${x},${y},${w},${h}`,
         '-t',
         'png',
         out,
       ])
       const buf = fs.readFileSync(out)
       saveDebugCapture(buf)
-      return buf
+      if (!incomingOnly) return buf
+      return cropIncomingOnlyBuffer(buf)
     } finally {
       try {
         fs.unlinkSync(out)
@@ -147,13 +154,11 @@ export async function captureScreenRegion(
     const cw = clamp(w, 8, iw - cx)
     const ch = clamp(h, 8, ih - cy)
     image.crop({ x: cx, y: cy, w: cw, h: ch })
-    if (incomingOnly) {
-      cropIncomingOnly(image)
-    }
     const out = await image.getBuffer('image/png')
     const buf = Buffer.isBuffer(out) ? out : Buffer.from(out)
     saveDebugCapture(buf)
-    return buf
+    if (!incomingOnly) return buf
+    return cropIncomingOnlyBuffer(buf)
   }
 
   throw new Error(
