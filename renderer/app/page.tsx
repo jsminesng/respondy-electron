@@ -201,9 +201,6 @@ export default function HomePage() {
     if (!respondy) return;
     return respondy.onNotification((payload: NotificationPayload) => {
       if (payload.source !== "ocr") return;
-      const realtimeProfile = personProfiles.find(
-        (person) => person.name === selectedRealtimePerson,
-      );
 
       const emotion = payload.summary?.trim() || payload.emotion?.trim() || "";
       const context = payload.strategy?.trim() || payload.tone?.trim() || "";
@@ -216,28 +213,8 @@ export default function HomePage() {
         suggestions,
       });
       setShowRealtimeResults(true);
-
-      const id = `rt-${payload.receivedAt}`;
-      setAnalysisHistory((h) => [
-        {
-          id,
-          at: payload.receivedAt,
-          source: "realtime",
-          title: `${selectedRealtimePerson.trim() || "실시간"}와의 실시간 대화`,
-          relation: realtimeProfile?.currentRelation?.trim() || "—",
-          goalRelation: realtimeProfile?.goalRelation?.trim() || "—",
-          situation: realtimeSituationRef.current.trim() || "실시간 감지",
-          receivedMessage: payload.message,
-          emotion: emotion || "분석 결과 없음",
-          context: context || "맥락 결과 없음",
-          suggestions: suggestions.length
-            ? suggestions
-            : ["추천 답장이 아직 생성되지 않았습니다."],
-        },
-        ...h,
-      ]);
     });
-  }, [personProfiles, selectedRealtimePerson]);
+  }, []);
 
   useEffect(() => {
     realtimeSituationRef.current = realtimeReceivedMessage;
@@ -686,7 +663,7 @@ export default function HomePage() {
     }
   };
 
-  const stopRealtimeDetection = async () => {
+  const stopRealtimeDetection = async (refreshHistory = false) => {
     const respondy = getRespondy();
     try {
       await respondy?.stopRealtimeDetection();
@@ -694,12 +671,15 @@ export default function HomePage() {
       // ignore stop race during view transitions
     } finally {
       setIsRealtimeMonitoring(false);
+      if (refreshHistory && loggedIn) {
+        void loadAnalysisHistory();
+      }
     }
   };
 
   const handleRealtimeMonitoringToggle = async () => {
     if (isRealtimeMonitoring) {
-      await stopRealtimeDetection();
+      await stopRealtimeDetection(true);
       return;
     }
 

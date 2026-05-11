@@ -33,6 +33,7 @@ import {
 import { listAnalysisHistory } from './services/backend-history'
 
 const isProd = process.env.NODE_ENV === 'production'
+const DEBUG_OCR_LOG = process.env.DEBUG_OCR_LOG === 'true'
 
 const envDir = path.join(__dirname, '..')
 dotenv.config({ path: path.join(envDir, '.env') })
@@ -66,6 +67,13 @@ function sendToRenderer(
 
 function broadcastNotification(payload: NotificationPayload) {
   const channel = 'notification-detected'
+  if (DEBUG_OCR_LOG && payload.source === 'ocr') {
+    console.log('[Respondy][OCR] broadcast notification', {
+      messageLength: payload.message?.length ?? 0,
+      hasSummary: Boolean(payload.summary),
+      suggestionsCount: payload.recommendedReplies?.length ?? 0,
+    })
+  }
   sendToRenderer(mainWindow, channel, payload)
 }
 
@@ -248,11 +256,21 @@ function completeRegionPicker(region: OcrRegion | null) {
       analysisGoal: input?.analysisGoal,
       avatarId: input?.avatarId ?? null,
     })
+    if (DEBUG_OCR_LOG) {
+      console.log('[Respondy][OCR] realtime detection started', {
+        sessionId: activeRealtimeSessionId,
+      })
+    }
     isRealtimeDetectionActive = true
     restartOcrLoop()
   })
 
   ipcMain.handle('ocr:stop', () => {
+    if (DEBUG_OCR_LOG) {
+      console.log('[Respondy][OCR] realtime detection stopped', {
+        sessionId: activeRealtimeSessionId,
+      })
+    }
     isRealtimeDetectionActive = false
     activeRealtimeSessionId = null
     ocrLoopHandle?.stop()

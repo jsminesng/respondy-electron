@@ -16,11 +16,21 @@ export type OcrDetectionPayload = {
   analysis: CaptureAnalysisSnapshot | null
 }
 const FRAME_CHANGE_THRESHOLD = 0.035
+const DEBUG_OCR_LOG = process.env.DEBUG_OCR_LOG === 'true'
 
 function stripKakaoTime(text: string): string {
   return text
     .replace(/\b(오전|오후)\s*\d{1,2}:\d{2}\b/g, '')
     .replace(/\b\d{1,2}:\d{2}\b/g, '')
+}
+
+function logOcrDebug(message: string, extra?: Record<string, unknown>) {
+  if (!DEBUG_OCR_LOG) return
+  if (extra) {
+    console.log(`[Respondy][OCR] ${message}`, extra)
+    return
+  }
+  console.log(`[Respondy][OCR] ${message}`)
 }
 
 /**
@@ -39,27 +49,69 @@ export function startOcrLoop(
 
   const tick = async () => {
     const s = getSettings()
-    if (!s.enabled) return
-    if (s.region.width < 8 || s.region.height < 8) return
-    if (busy) return
+    if (!s.enabled) {
+      logOcrDebug('skip tick: OCR disabled')
+      return
+    }
+    if (s.region.width < 8 || s.region.height < 8) {
+      logOcrDebug('skip tick: region too small', {
+        width: s.region.width,
+        height: s.region.height,
+      })
+      return
+    }
+    if (busy) {
+      logOcrDebug('skip tick: previous tick still running')
+      return
+    }
     busy = true
     try {
       const buf = await captureScreenRegion(s.region, s.incomingOnly)
       const signature = await createFrameSignature(buf)
       if (lastFrameSignature) {
         const diffRatio = getFrameDifferenceRatio(lastFrameSignature, signature)
-        if (diffRatio < FRAME_CHANGE_THRESHOLD) return
+        if (diffRatio < FRAME_CHANGE_THRESHOLD) {
+          logOcrDebug('skip tick: frame not changed enough', {
+            diffRatio,
+            threshold: FRAME_CHANGE_THRESHOLD,
+          })
+          return
+        }
+        logOcrDebug('frame changed', {
+          diffRatio,
+          threshold: FRAME_CHANGE_THRESHOLD,
+        })
       }
       lastFrameSignature = signature
 
       const sessionId = getSessionId()
-      if (!sessionId) return
+      if (!sessionId) {
+        logOcrDebug('skip tick: no active session id')
+        return
+      }
       const extraction = await extractTextFromImage(buf, sessionId)
       const cleaned = stripKakaoTime(extraction.text)
       const norm = cleaned.replace(/\s+/g, ' ').trim()
-      if (norm.length < 2) return
-      if (norm === lastNormalized) return
+      if (norm.length < 2) {
+        logOcrDebug('skip tick: OCR text too short', {
+          rawLength: extraction.text.length,
+          normalizedLength: norm.length,
+          hasAnalysis: Boolean(extraction.analysis),
+        })
+        return
+      }
+      if (norm === lastNormalized) {
+        logOcrDebug('skip tick: duplicated normalized text', {
+          normalizedLength: norm.length,
+        })
+        return
+      }
       lastNormalized = norm
+      logOcrDebug('emit OCR detection', {
+        normalizedLength: norm.length,
+        hasAnalysis: Boolean(extraction.analysis),
+        suggestionsCount: extraction.analysis?.recommendedReplies?.length ?? 0,
+      })
       onDetection({
         text: norm,
         analysis: extraction.analysis,

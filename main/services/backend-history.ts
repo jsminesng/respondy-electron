@@ -203,24 +203,39 @@ export async function listAnalysisHistory(): Promise<AnalysisHistoryRecord[]> {
           },
         )
         const captures = extractList(capturesBody)
-        const records = await Promise.all(
-          captures.map(async (capture) => {
-            const captureId = normalizeSessionId(capture.id)
-            if (!captureId) return null
+        if (captures.length === 0) return []
 
-            const inlineAnalysis = Array.isArray(capture.analysis_results)
-              ? capture.analysis_results[0] ?? null
-              : null
+        const latestCapture = [...captures]
+          .filter((capture) => normalizeSessionId(capture.id))
+          .sort(
+            (a, b) =>
+              toTimestamp(
+                b.processing_completed_at,
+                b.detected_at,
+                b.created_at,
+              ) -
+              toTimestamp(
+                a.processing_completed_at,
+                a.detected_at,
+                a.created_at,
+              ),
+          )[0]
 
-            const [messages, analysis] = await Promise.all([
-              readCaptureMessages(captureId),
-              inlineAnalysis ? Promise.resolve(inlineAnalysis) : readCaptureAnalysis(captureId),
-            ])
+        if (!latestCapture) return []
+        const captureId = normalizeSessionId(latestCapture.id)
+        if (!captureId) return []
 
-            return toHistoryRecord(session, capture, messages, analysis)
-          }),
-        )
-        return records.filter((item): item is AnalysisHistoryRecord => Boolean(item))
+        const inlineAnalysis = Array.isArray(latestCapture.analysis_results)
+          ? latestCapture.analysis_results[0] ?? null
+          : null
+
+        const [messages, analysis] = await Promise.all([
+          readCaptureMessages(captureId),
+          inlineAnalysis ? Promise.resolve(inlineAnalysis) : readCaptureAnalysis(captureId),
+        ])
+
+        const record = toHistoryRecord(session, latestCapture, messages, analysis)
+        return record ? [record] : []
       } catch {
         return []
       }
