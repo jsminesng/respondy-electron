@@ -33,6 +33,7 @@ import {
 } from './services/backend-avatar'
 import { listAnalysisHistory } from './services/backend-history'
 import { analyzeManualConversation } from './services/backend-manual'
+import { getUserProfile, updateUserProfile } from './services/backend-profile'
 
 const isProd = process.env.NODE_ENV === 'production'
 const DEBUG_OCR_LOG = process.env.DEBUG_OCR_LOG === 'true'
@@ -326,6 +327,8 @@ function completeRegionPicker(region: OcrRegion | null) {
   ipcMain.handle('analysis:manual', (_evt, payload: ManualAnalysisInput) =>
     analyzeManualConversation(payload),
   )
+  ipcMain.handle('profile:get', () => getUserProfile())
+  ipcMain.handle('profile:update', (_evt, payload) => updateUserProfile(payload))
 
   if (isProd) {
     await mainWindow.loadURL('app://./')

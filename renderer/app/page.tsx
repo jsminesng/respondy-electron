@@ -267,6 +267,7 @@ export default function HomePage() {
       setAnalysisHistory([]);
       return;
     }
+    void loadUserProfile();
     void loadPersonProfiles();
     void loadAnalysisHistory();
   }, [loggedIn]);
@@ -350,6 +351,29 @@ export default function HomePage() {
     } catch (e) {
       const message =
         e instanceof Error ? e.message : "인물 목록을 불러오지 못했습니다.";
+      setAuthError(message);
+    }
+  };
+
+  const loadUserProfile = async () => {
+    const respondy = getRespondy();
+    if (!respondy) return;
+    try {
+      const profile = await respondy.getUserProfile();
+      if (profile.name?.trim()) {
+        setUserName(profile.name.trim());
+      }
+      if (profile.email?.trim()) {
+        setProfileEmail(profile.email.trim());
+      }
+      if (profile.birthDate?.trim()) {
+        setProfileBirthDate(profile.birthDate.trim());
+      }
+    } catch (e) {
+      const message =
+        e instanceof Error
+          ? e.message
+          : "프로필 정보를 불러오지 못했습니다.";
       setAuthError(message);
     }
   };
@@ -827,14 +851,33 @@ export default function HomePage() {
     setPasswordChangeError("");
   };
 
-  const saveProfile = () => {
+  const saveProfile = async () => {
+    const respondy = getRespondy();
+    if (!respondy) {
+      window.alert("Electron 환경에서만 프로필 수정이 가능합니다.");
+      return;
+    }
     const nextName = editProfileName.trim();
     const nextEmail = editProfileEmail.trim();
     if (!nextName || !nextEmail) return;
-    setUserName(nextName);
-    setProfileEmail(nextEmail);
-    setProfileBirthDate(editProfileBirthDate);
-    closeProfileEditModal();
+    try {
+      setAuthBusy(true);
+      const profile = await respondy.updateUserProfile({
+        name: nextName,
+        email: nextEmail,
+        birthDate: editProfileBirthDate,
+      });
+      setUserName(profile.name || nextName);
+      setProfileEmail(profile.email || nextEmail);
+      setProfileBirthDate(profile.birthDate || editProfileBirthDate);
+      closeProfileEditModal();
+    } catch (e) {
+      const message =
+        e instanceof Error ? e.message : "프로필 저장 중 오류가 발생했습니다.";
+      setAuthError(message);
+    } finally {
+      setAuthBusy(false);
+    }
   };
 
   const saveChangedPassword = () => {
@@ -1907,7 +1950,7 @@ export default function HomePage() {
                 <button
                   type="button"
                   className="respondy-primary-btn respondy-modal-primary-btn"
-                  onClick={saveProfile}
+                  onClick={() => void saveProfile()}
                   disabled={!editProfileName.trim() || !editProfileEmail.trim()}
                 >
                   저장하기

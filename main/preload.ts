@@ -10,6 +10,7 @@ import type {
   RealtimeDetectionStartInput,
   RespondyApi,
   SentimentResult,
+  UserProfileUpdateInput,
 } from "../shared/respondy-types";
 
 const respondy: RespondyApi = {
@@ -85,6 +86,12 @@ const respondy: RespondyApi = {
   },
   analyzeManualConversation(payload: ManualAnalysisInput) {
     return ipcRenderer.invoke("analysis:manual", payload);
+  },
+  getUserProfile() {
+    return ipcRenderer.invoke("profile:get");
+  },
+  updateUserProfile(payload: UserProfileUpdateInput) {
+    return ipcRenderer.invoke("profile:update", payload);
   },
 };
 

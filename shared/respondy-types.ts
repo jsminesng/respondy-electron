@@ -135,6 +135,18 @@ export type ManualAnalysisResult = {
   suggestions: string[];
 };
 
+export type UserProfile = {
+  name: string;
+  email: string;
+  birthDate: string;
+};
+
+export type UserProfileUpdateInput = {
+  name: string;
+  email: string;
+  birthDate: string;
+};
+
 export type RespondyApi = {
   onNotification: (
     callback: (payload: NotificationPayload) => void,
@@ -169,4 +181,6 @@ export type RespondyApi = {
   analyzeManualConversation: (
     payload: ManualAnalysisInput,
   ) => Promise<ManualAnalysisResult>;
+  getUserProfile: () => Promise<UserProfile>;
+  updateUserProfile: (payload: UserProfileUpdateInput) => Promise<UserProfile>;
 };
