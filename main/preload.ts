@@ -3,6 +3,7 @@ import type {
   AvatarCreateInput,
   AvatarUpdateInput,
   DisplayBounds,
+  ManualAnalysisInput,
   NotificationPayload,
   OcrRegion,
   OcrSettings,
@@ -81,6 +82,9 @@ const respondy: RespondyApi = {
   },
   listAnalysisHistory() {
     return ipcRenderer.invoke("analysis:history:list");
+  },
+  analyzeManualConversation(payload: ManualAnalysisInput) {
+    return ipcRenderer.invoke("analysis:manual", payload);
   },
 };
 

@@ -90,15 +90,10 @@ const EMPTY_REALTIME_RESULT = {
   suggestions: [] as string[],
 };
 
-const MANUAL_RESULT = {
-  emotion: `-기본 감정: 편안함 + 소소한 친근감\n\n-"그래~" -> 거리감 없이 부드럽게 받아주는 느낌\n\n-과제 열심히 하고 -> 부담 없는 거리 (친구처럼 한마디)\n\n-"내일 보자" -> 관계를 이어가려는 의도`,
-  context: `-아직 완전 친군 아니지만 "편한 선후배"에서 "친구"로 넘어가는 중간 단계\n\n-대화가 자연스럽게 이어짐 -> "내일 보자" + 관계를 끊지 않고 이어가는 흐름`,
-  suggestions: [
-    "네 선배도요~",
-    "넵!!",
-    "네 내일도 만나서 같이 과제해요~~",
-    "선배도 내일 봐요~",
-  ],
+const EMPTY_MANUAL_RESULT = {
+  emotion: "",
+  context: "",
+  suggestions: [] as string[],
 };
 
 export default function HomePage() {
@@ -143,6 +138,8 @@ export default function HomePage() {
   const [isRealtimeMonitoring, setIsRealtimeMonitoring] = useState(false);
   const [isPickingRegion, setIsPickingRegion] = useState(false);
   const [realtimeResult, setRealtimeResult] = useState(EMPTY_REALTIME_RESULT);
+  const [manualResult, setManualResult] = useState(EMPTY_MANUAL_RESULT);
+  const [isManualAnalyzing, setIsManualAnalyzing] = useState(false);
   const [analysisHistory, setAnalysisHistory] = useState<AnalysisRecord[]>([]);
   const [historyDetailId, setHistoryDetailId] = useState<string | null>(null);
   const [personDetailId, setPersonDetailId] = useState<string | null>(null);
@@ -321,6 +318,7 @@ export default function HomePage() {
     setManualSituation("");
     setManualReceivedMessage("");
     setShowManualResults(false);
+    setManualResult(EMPTY_MANUAL_RESULT);
     setSelectedView("realtime");
   };
 
@@ -633,7 +631,10 @@ export default function HomePage() {
     setShowRealtimeResults(false);
     setRealtimeResult(EMPTY_REALTIME_RESULT);
   };
-  const clearManualResults = () => setShowManualResults(false);
+  const clearManualResults = () => {
+    setShowManualResults(false);
+    setManualResult(EMPTY_MANUAL_RESULT);
+  };
 
   const startRealtimeDetection = async (): Promise<boolean> => {
     const respondy = getRespondy();
@@ -1178,28 +1179,59 @@ export default function HomePage() {
           type="button"
           onClick={() => {
             if (!manualFormReady) return;
-            const id = `mn-${Date.now()}`;
-            setAnalysisHistory((h) => [
-              {
-                id,
-                at: Date.now(),
-                source: "manual",
-                title: `${selectedManualPerson.trim()}와의 수동 입력 대화`,
-                relation: selectedManualProfile?.currentRelation?.trim() || "—",
-                goalRelation:
-                  selectedManualProfile?.goalRelation?.trim() || "—",
-                situation: manualSituation.trim(),
-                receivedMessage: manualReceivedMessage.trim(),
-                emotion: MANUAL_RESULT.emotion,
-                context: MANUAL_RESULT.context,
-                suggestions: [...MANUAL_RESULT.suggestions],
-              },
-              ...h,
-            ]);
-            setShowManualResults(true);
+            const respondy = getRespondy();
+            if (!respondy) {
+              window.alert("Electron 환경에서만 수동 분석을 실행할 수 있습니다.");
+              return;
+            }
+            const avatarId = Number(selectedManualProfile?.id);
+            if (!Number.isFinite(avatarId) || avatarId <= 0) {
+              window.alert("아바타를 다시 선택해 주세요.");
+              return;
+            }
+            void (async () => {
+              setIsManualAnalyzing(true);
+              try {
+                const result = await respondy.analyzeManualConversation({
+                  avatarId,
+                  situationContext: manualSituation.trim(),
+                  receivedMessage: manualReceivedMessage.trim(),
+                });
+                setManualResult(result);
+                setShowManualResults(true);
+                const id = `mn-${Date.now()}`;
+                setAnalysisHistory((h) => [
+                  {
+                    id,
+                    at: Date.now(),
+                    source: "manual",
+                    title: `${selectedManualPerson.trim()}와의 수동 입력 대화`,
+                    relation:
+                      selectedManualProfile?.currentRelation?.trim() || "—",
+                    goalRelation:
+                      selectedManualProfile?.goalRelation?.trim() || "—",
+                    situation: manualSituation.trim(),
+                    receivedMessage: manualReceivedMessage.trim(),
+                    emotion: result.emotion,
+                    context: result.context,
+                    suggestions: [...result.suggestions],
+                  },
+                  ...h,
+                ]);
+              } catch (e) {
+                const message =
+                  e instanceof Error
+                    ? e.message
+                    : "수동 분석 중 오류가 발생했습니다.";
+                window.alert(message);
+              } finally {
+                setIsManualAnalyzing(false);
+              }
+            })();
           }}
+          disabled={!manualFormReady || isManualAnalyzing}
         >
-          AI 분석 시작
+          {isManualAnalyzing ? "분석 중..." : "AI 분석 시작"}
         </button>
       </article>
 
@@ -1209,14 +1241,14 @@ export default function HomePage() {
         <textarea
           className={`respondy-textarea respondy-readonly-area respondy-output-area ${showManualResults ? "" : "respondy-output-pending"}`}
           readOnly
-          value={showManualResults ? MANUAL_RESULT.emotion : ""}
+          value={showManualResults ? manualResult.emotion : ""}
           placeholder="왼쪽 패널을 모두 입력한 뒤 AI 분석 시작을 누르면 표시됩니다"
         />
         <label className="respondy-label">맥락 해석</label>
         <textarea
           className={`respondy-textarea respondy-readonly-area respondy-output-area ${showManualResults ? "" : "respondy-output-pending"}`}
           readOnly
-          value={showManualResults ? MANUAL_RESULT.context : ""}
+          value={showManualResults ? manualResult.context : ""}
           placeholder="왼쪽 패널을 모두 입력한 뒤 AI 분석 시작을 누르면 표시됩니다"
         />
       </article>
@@ -1225,7 +1257,7 @@ export default function HomePage() {
         <h3 className="respondy-card-title">추천 답장</h3>
         {showManualResults ? (
           <div className="respondy-suggestions-body">
-            {MANUAL_RESULT.suggestions.map((message, index) => {
+            {manualResult.suggestions.map((message, index) => {
               const copyId = `manual-${index}`;
               return (
                 <div key={message} className="respondy-suggestion">

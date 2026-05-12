@@ -9,6 +9,7 @@ import {
 } from './services/ai-service'
 import type {
   LoginInput,
+  ManualAnalysisInput,
   NotificationPayload,
   OcrRegion,
   OcrSettings,
@@ -31,6 +32,7 @@ import {
   updateAvatar,
 } from './services/backend-avatar'
 import { listAnalysisHistory } from './services/backend-history'
+import { analyzeManualConversation } from './services/backend-manual'
 
 const isProd = process.env.NODE_ENV === 'production'
 const DEBUG_OCR_LOG = process.env.DEBUG_OCR_LOG === 'true'
@@ -321,6 +323,9 @@ function completeRegionPicker(region: OcrRegion | null) {
     deleteAvatar(avatarId),
   )
   ipcMain.handle('analysis:history:list', () => listAnalysisHistory())
+  ipcMain.handle('analysis:manual', (_evt, payload: ManualAnalysisInput) =>
+    analyzeManualConversation(payload),
+  )
 
   if (isProd) {
     await mainWindow.loadURL('app://./')

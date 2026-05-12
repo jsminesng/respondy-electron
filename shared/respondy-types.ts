@@ -123,6 +123,18 @@ export type AnalysisHistoryRecord = {
   suggestions: string[];
 };
 
+export type ManualAnalysisInput = {
+  avatarId: number;
+  situationContext: string;
+  receivedMessage: string;
+};
+
+export type ManualAnalysisResult = {
+  emotion: string;
+  context: string;
+  suggestions: string[];
+};
+
 export type RespondyApi = {
   onNotification: (
     callback: (payload: NotificationPayload) => void,
@@ -154,4 +166,7 @@ export type RespondyApi = {
   ) => Promise<AvatarProfile>;
   deleteAvatar: (avatarId: number) => Promise<void>;
   listAnalysisHistory: () => Promise<AnalysisHistoryRecord[]>;
+  analyzeManualConversation: (
+    payload: ManualAnalysisInput,
+  ) => Promise<ManualAnalysisResult>;
 };
