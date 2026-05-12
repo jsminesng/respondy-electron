@@ -1735,7 +1735,7 @@ export default function HomePage() {
     if (!authReady) {
       return (
         <section className="respondy-center respondy-center--auth">
-          <article className="respondy-card respondy-auth-card">
+          <article className="respondy-card respondy-auth-card respondy-auth-card--status">
             <p className="respondy-helper-text">로그인 상태를 확인하는 중...</p>
           </article>
         </section>
