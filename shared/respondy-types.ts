@@ -143,6 +143,7 @@ export type UserProfile = {
   name: string;
   email: string;
   birthDate: string;
+  privacyConsentAt: string;
 };
 
 export type UserProfileUpdateInput = {
@@ -195,5 +196,6 @@ export type RespondyApi = {
   ) => Promise<ManualAnalysisResult>;
   getUserProfile: () => Promise<UserProfile>;
   updateUserProfile: (payload: UserProfileUpdateInput) => Promise<UserProfile>;
+  submitPrivacyConsent: () => Promise<void>;
   changePassword: (payload: PasswordChangeInput) => Promise<void>;
 };

@@ -748,6 +748,47 @@
   .respondy-modal-primary-btn {
     @apply mt-0 w-auto min-w-[110px] px-4 sm:mt-0 sm:min-w-[120px] sm:px-5;
   }
+
+  .respondy-consent-modal {
+    @apply max-w-[42rem] overflow-hidden;
+    background: linear-gradient(
+      180deg,
+      rgba(24, 19, 45, 0.98) 0%,
+      rgba(16, 12, 31, 0.98) 100%
+    );
+  }
+
+  .respondy-consent-modal .respondy-modal-head {
+    @apply border-b border-white/[0.07] bg-transparent;
+  }
+
+  .respondy-consent-modal-body {
+    @apply flex flex-col gap-6 px-6 py-7 sm:px-8 sm:py-8;
+  }
+
+  .respondy-consent-desc {
+    @apply rounded-xl border border-white/10 bg-white/[0.04] px-4 py-4 text-base font-medium leading-relaxed text-white/90 sm:text-[1.05rem];
+  }
+
+  .respondy-consent-checkrow {
+    @apply flex items-start gap-3 rounded-xl border border-white/10 bg-black/20 px-4 py-4;
+  }
+
+  .respondy-consent-checkbox {
+    @apply mt-0.5 h-5 w-5 shrink-0 accent-[#6d53ff];
+  }
+
+  .respondy-consent-checklabel {
+    @apply text-base font-semibold leading-relaxed text-white sm:text-lg;
+  }
+
+  .respondy-consent-actions {
+    @apply mt-1;
+  }
+
+  .respondy-consent-actions .respondy-modal-primary-btn {
+    @apply ml-auto min-w-[130px];
+  }
 }
 
 @media (max-width: 1023px) {

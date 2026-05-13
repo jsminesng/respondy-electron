@@ -106,6 +106,11 @@ export default function HomePage() {
   const [userName, setUserName] = useState("ABC");
   const [profileEmail, setProfileEmail] = useState("abc@kookmin.ac.kr");
   const [profileBirthDate, setProfileBirthDate] = useState("2001-01-01");
+  const [privacyConsentAt, setPrivacyConsentAt] = useState("");
+  const [privacyConsentLoaded, setPrivacyConsentLoaded] = useState(false);
+  const [showPrivacyConsentModal, setShowPrivacyConsentModal] = useState(false);
+  const [privacyConsentChecked, setPrivacyConsentChecked] = useState(false);
+  const [privacyConsentBusy, setPrivacyConsentBusy] = useState(false);
   const [showProfileEditModal, setShowProfileEditModal] = useState(false);
   const [showPasswordChangeModal, setShowPasswordChangeModal] = useState(false);
   const [editProfileName, setEditProfileName] = useState("");
@@ -274,12 +279,33 @@ export default function HomePage() {
     if (!loggedIn) {
       setPersonProfiles([]);
       setAnalysisHistory([]);
+      setPrivacyConsentAt("");
+      setPrivacyConsentLoaded(false);
+      setShowPrivacyConsentModal(false);
+      setPrivacyConsentChecked(false);
       return;
     }
+    setPrivacyConsentLoaded(false);
     void loadUserProfile();
     void loadPersonProfiles();
     void loadAnalysisHistory();
   }, [loggedIn]);
+
+  useEffect(() => {
+    if (!loggedIn) {
+      setShowPrivacyConsentModal(false);
+      setPrivacyConsentChecked(false);
+      return;
+    }
+    const needsConsent =
+      privacyConsentLoaded &&
+      (selectedView === "realtime" || selectedView === "manual") &&
+      !privacyConsentAt;
+    setShowPrivacyConsentModal(needsConsent);
+    if (!needsConsent) {
+      setPrivacyConsentChecked(false);
+    }
+  }, [loggedIn, privacyConsentAt, privacyConsentLoaded, selectedView]);
 
   useEffect(() => {
     setHistoryDetailId(null);
@@ -336,6 +362,10 @@ export default function HomePage() {
 
   const resetSessionUi = () => {
     setRealtimeReceivedMessage("");
+    setPrivacyConsentAt("");
+    setPrivacyConsentLoaded(false);
+    setShowPrivacyConsentModal(false);
+    setPrivacyConsentChecked(false);
     setPersonProfiles([]);
     setSelectedRealtimePerson("");
     setSelectedChatPerson("");
@@ -405,12 +435,15 @@ export default function HomePage() {
       if (profile.birthDate?.trim()) {
         setProfileBirthDate(profile.birthDate.trim());
       }
+      setPrivacyConsentAt(profile.privacyConsentAt?.trim() || "");
     } catch (e) {
       const message =
         e instanceof Error
           ? e.message
           : "프로필 정보를 불러오지 못했습니다.";
       setAuthError(message);
+    } finally {
+      setPrivacyConsentLoaded(true);
     }
   };
 
@@ -694,12 +727,42 @@ export default function HomePage() {
     setManualResult(EMPTY_MANUAL_RESULT);
   };
 
+  const ensurePrivacyConsentForAnalysis = async (): Promise<boolean> => {
+    if (privacyConsentAt) return true;
+    setShowPrivacyConsentModal(true);
+    window.alert("개인정보 수집 및 이용 동의 후 분석 기능을 사용할 수 있습니다.");
+    return false;
+  };
+
+  const submitPrivacyConsent = async () => {
+    const respondy = getRespondy();
+    if (!respondy) return;
+    if (!privacyConsentChecked) return;
+    try {
+      setPrivacyConsentBusy(true);
+      await respondy.submitPrivacyConsent();
+      await loadUserProfile();
+      setShowPrivacyConsentModal(false);
+      setPrivacyConsentChecked(false);
+    } catch (e) {
+      const message =
+        e instanceof Error
+          ? e.message
+          : "개인정보 동의 처리 중 오류가 발생했습니다.";
+      window.alert(message);
+    } finally {
+      setPrivacyConsentBusy(false);
+    }
+  };
+
   const startRealtimeDetection = async (): Promise<boolean> => {
     const respondy = getRespondy();
     if (!respondy) {
       window.alert("Electron 환경에서만 실시간 감지를 시작할 수 있습니다.");
       return false;
     }
+    const allowed = await ensurePrivacyConsentForAnalysis();
+    if (!allowed) return false;
     try {
       const selectedProfile = personProfiles.find(
         (person) => person.name === selectedRealtimePerson,
@@ -1297,6 +1360,8 @@ export default function HomePage() {
               return;
             }
             void (async () => {
+              const allowed = await ensurePrivacyConsentForAnalysis();
+              if (!allowed) return;
               setIsManualAnalyzing(true);
               try {
                 const result = await respondy.analyzeManualConversation({
@@ -1923,6 +1988,58 @@ export default function HomePage() {
       >
         {renderMainContent()}
       </main>
+
+      {loggedIn && showPrivacyConsentModal && (
+        <div className="respondy-modal-backdrop" role="presentation">
+          <div
+            className="respondy-modal respondy-person-modal respondy-consent-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="privacy-consent-modal-title"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="respondy-modal-head">
+              <div className="respondy-modal-head-text">
+                <p className="respondy-modal-eyebrow">필수 동의</p>
+                <h2
+                  id="privacy-consent-modal-title"
+                  className="respondy-modal-title"
+                >
+                  개인정보 수집 및 이용 동의
+                </h2>
+              </div>
+            </div>
+            <div className="respondy-modal-body respondy-consent-modal-body">
+              <p className="respondy-consent-desc">
+                분석 기능 사용을 위해 개인정보 수집 및 이용 동의가 필요합니다.
+              </p>
+              <label className="respondy-consent-checkrow" htmlFor="privacy-consent">
+                <input
+                  id="privacy-consent"
+                  type="checkbox"
+                  className="respondy-consent-checkbox"
+                  checked={privacyConsentChecked}
+                  onChange={(e) => setPrivacyConsentChecked(e.target.checked)}
+                  disabled={privacyConsentBusy}
+                />
+                <span className="respondy-consent-checklabel">
+                  개인정보 수집 및 이용에 동의합니다.
+                </span>
+              </label>
+              <div className="respondy-modal-actions respondy-consent-actions">
+                <button
+                  type="button"
+                  className="respondy-primary-btn respondy-modal-primary-btn"
+                  onClick={() => void submitPrivacyConsent()}
+                  disabled={!privacyConsentChecked || privacyConsentBusy}
+                >
+                  {privacyConsentBusy ? "처리 중..." : "확인"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {loggedIn && showProfileEditModal && (
         <div

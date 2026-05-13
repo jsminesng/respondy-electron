@@ -100,6 +100,9 @@ const respondy: RespondyApi = {
   updateUserProfile(payload: UserProfileUpdateInput) {
     return ipcRenderer.invoke("profile:update", payload);
   },
+  submitPrivacyConsent() {
+    return ipcRenderer.invoke("privacy:consent");
+  },
   changePassword(payload: PasswordChangeInput) {
     return ipcRenderer.invoke("password:change", payload);
   },

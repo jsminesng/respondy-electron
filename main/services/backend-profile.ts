@@ -15,6 +15,8 @@ type ProfileResponse = {
   email?: unknown
   birth_date?: unknown
   birthDate?: unknown
+  privacy_consent_at?: unknown
+  privacyConsentAt?: unknown
 }
 
 function toStringValue(value: unknown): string {
@@ -28,6 +30,10 @@ function toRecord(value: unknown): UnknownRecord | null {
 
 function getProfileEndpoint(): string {
   return process.env.USER_PROFILE_ENDPOINT?.trim() || '/auth/profile/'
+}
+
+function getPrivacyConsentEndpoint(): string {
+  return process.env.PRIVACY_CONSENT_ENDPOINT?.trim() || '/auth/privacy-consent/'
 }
 
 function normalizeProfile(body: unknown): UserProfile {
@@ -58,11 +64,21 @@ function normalizeProfile(body: unknown): UserProfile {
     toStringValue(root.birthDate) ||
     toStringValue(user.birth_date) ||
     toStringValue(user.birthDate)
+  const privacyConsentAt =
+    toStringValue(profile.privacy_consent_at) ||
+    toStringValue(profile.privacyConsentAt) ||
+    toStringValue(data.privacy_consent_at) ||
+    toStringValue(data.privacyConsentAt) ||
+    toStringValue(root.privacy_consent_at) ||
+    toStringValue(root.privacyConsentAt) ||
+    toStringValue(user.privacy_consent_at) ||
+    toStringValue(user.privacyConsentAt)
 
   return {
     name,
     email,
     birthDate,
+    privacyConsentAt,
   }
 }
 
@@ -94,4 +110,14 @@ export async function updateUserProfile(
   })
 
   return normalizeProfile(body)
+}
+
+export async function submitPrivacyConsent(): Promise<void> {
+  await requestJson<unknown>(getPrivacyConsentEndpoint(), {
+    method: 'POST',
+    auth: true,
+    body: {
+      agreed: true,
+    },
+  })
 }

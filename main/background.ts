@@ -38,7 +38,11 @@ import {
   listAnalysisHistory,
 } from './services/backend-history'
 import { analyzeManualConversation } from './services/backend-manual'
-import { getUserProfile, updateUserProfile } from './services/backend-profile'
+import {
+  getUserProfile,
+  submitPrivacyConsent,
+  updateUserProfile,
+} from './services/backend-profile'
 import { changePassword } from './services/backend-password'
 
 const isProd = process.env.NODE_ENV === 'production'
@@ -354,6 +358,7 @@ function completeRegionPicker(region: OcrRegion | null) {
   )
   ipcMain.handle('profile:get', () => getUserProfile())
   ipcMain.handle('profile:update', (_evt, payload) => updateUserProfile(payload))
+  ipcMain.handle('privacy:consent', () => submitPrivacyConsent())
   ipcMain.handle('password:change', (_evt, payload: PasswordChangeInput) =>
     changePassword(payload),
   )
