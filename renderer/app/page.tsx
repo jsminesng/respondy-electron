@@ -49,14 +49,6 @@ const navItems: { key: AppView; label: string }[] = [
   { key: "mypage", label: "마이페이지" },
 ];
 
-const CHAT_DEMO_REPLIES = [
-  "응, 그렇구나. 그다음엔 어떻게 했어?",
-  "아하, 나도 비슷한 적 있어 ㅎㅎ 너는 보통 어떻게 말해?",
-  "그 말 들으니까 이해가 돼. 상대한테는 어떻게 전하고 싶어?",
-  "좋아, 그 톤이면 괜찮을 것 같아. 한 번 더 말해볼래?",
-  "음… 그때 기분은 어땠어? 조금 더 구체적으로 말해줄 수 있어?",
-];
-
 const AGE_GROUP_OPTIONS = [
   "10대",
   "20대",
@@ -131,11 +123,11 @@ export default function HomePage() {
   const [selectedView, setSelectedView] = useState<AppView>("realtime");
   const [selectedChatPerson, setSelectedChatPerson] = useState("");
   const [chatStep, setChatStep] = useState<ChatStep>("select");
+  const [activeChatId, setActiveChatId] = useState<number | null>(null);
   const [chatMessages, setChatMessages] = useState<ChatBubble[]>([]);
   const [chatDraft, setChatDraft] = useState("");
   const [chatTyping, setChatTyping] = useState(false);
   const chatScrollRef = useRef<HTMLDivElement>(null);
-  const demoReplyIdxRef = useRef(0);
   const [realtimeReceivedMessage, setRealtimeReceivedMessage] = useState("");
   const [personProfiles, setPersonProfiles] = useState<PersonProfile[]>([]);
   const [selectedRealtimePerson, setSelectedRealtimePerson] = useState("");
@@ -197,10 +189,10 @@ export default function HomePage() {
   useEffect(() => {
     if (selectedView !== "chat") {
       setChatStep("select");
+      setActiveChatId(null);
       setChatMessages([]);
       setChatDraft("");
       setChatTyping(false);
-      demoReplyIdxRef.current = 0;
     }
   }, [selectedView]);
 
@@ -885,63 +877,134 @@ export default function HomePage() {
   );
   const chatRelationLabel = selectedChatPerson.trim() || "인물 미선택";
 
-  const startChatSession = () => {
+  const toChatBubble = (
+    message: {
+      id: number;
+      senderType: "user" | "assistant";
+      content: string;
+      createdAt: number;
+    },
+  ): ChatBubble => ({
+    id: `chat-${message.id}`,
+    role: message.senderType === "assistant" ? "assistant" : "user",
+    text: message.content,
+    at: message.createdAt || Date.now(),
+  });
+
+  const startChatSession = async () => {
+    const respondy = getRespondy();
+    if (!respondy) {
+      window.alert("Electron 환경에서만 AI 챗을 사용할 수 있습니다.");
+      return;
+    }
     if (!selectedChatPerson.trim()) return;
-    demoReplyIdxRef.current = 0;
-    const relationHint = selectedChatProfile?.currentRelation
-      ? `${selectedChatProfile.currentRelation} 관계로 `
-      : "";
-    const openingText = `${selectedChatPerson.trim()}님과 ${relationHint}대화를 연습해보자. 편하게 시작해줘!`;
-    setChatStep("conversation");
-    setChatMessages([
-      {
-        id: `open-${Date.now()}`,
-        role: "assistant",
-        text: openingText,
-        at: Date.now(),
-      },
-    ]);
-    setChatDraft("");
-    setChatTyping(false);
+    const avatarId = Number(selectedChatProfile?.id);
+    if (!Number.isFinite(avatarId) || avatarId <= 0) {
+      window.alert("인물을 다시 선택해 주세요.");
+      return;
+    }
+    try {
+      setChatTyping(true);
+      const created = await respondy.createCoachingChat({
+        avatarId,
+        title: `${selectedChatPerson.trim()}와 대화 연습`,
+        situationContext:
+          selectedChatProfile?.goalRelation?.trim() ||
+          selectedChatProfile?.currentRelation?.trim() ||
+          "자연스럽게 대화 이어가기",
+      });
+      const detail = await respondy.getCoachingChatDetail(created.id);
+      setActiveChatId(detail.id);
+      setChatStep("conversation");
+      setChatMessages(detail.messages.map((message) => toChatBubble(message)));
+      setChatDraft("");
+    } catch (e) {
+      const message = e instanceof Error ? e.message : "AI 챗 시작에 실패했습니다.";
+      window.alert(message);
+    } finally {
+      setChatTyping(false);
+    }
   };
 
   const leaveChatConversation = () => {
+    const chatId = activeChatId;
+    const respondy = getRespondy();
+    if (respondy && chatId) {
+      void respondy.archiveCoachingChat(chatId).catch(() => undefined);
+    }
     setChatStep("select");
+    setActiveChatId(null);
     setChatMessages([]);
     setChatDraft("");
     setChatTyping(false);
-    demoReplyIdxRef.current = 0;
   };
 
   const sendChatMessage = () => {
     const text = chatDraft.trim();
     if (!text || chatTyping) return;
-    setChatMessages((m) => [
-      ...m,
-      { id: `u-${Date.now()}`, role: "user", text, at: Date.now() },
-    ]);
+    const chatId = activeChatId;
+    if (!chatId) {
+      window.alert("채팅 세션이 준비되지 않았습니다. 다시 시작해 주세요.");
+      return;
+    }
+    const nextUserMessage: ChatBubble = {
+      id: `u-${Date.now()}`,
+      role: "user",
+      text,
+      at: Date.now(),
+    };
+    setChatMessages((m) => [...m, nextUserMessage]);
     setChatDraft("");
     setChatTyping(true);
-    window.setTimeout(
-      () => {
-        const reply =
-          CHAT_DEMO_REPLIES[
-            demoReplyIdxRef.current % CHAT_DEMO_REPLIES.length
-          ] ?? "";
-        demoReplyIdxRef.current += 1;
+    void (async () => {
+      const respondy = getRespondy();
+      if (!respondy) {
         setChatMessages((m) => [
           ...m,
           {
             id: `a-${Date.now()}`,
             role: "assistant",
-            text: reply,
+            text: "현재 환경에서는 AI 챗봇을 사용할 수 없습니다.",
             at: Date.now(),
           },
         ]);
         setChatTyping(false);
-      },
-      550 + Math.random() * 450,
-    );
+        return;
+      }
+
+      try {
+        const res = await respondy.sendCoachingChatMessage(chatId, text);
+        const warmReply =
+          res.assistantMessage.content || "좋아, 조금 더 얘기해볼까?";
+
+        setChatMessages((m) => [
+          ...m.filter((item) => item.id !== nextUserMessage.id),
+          toChatBubble(res.userMessage),
+          {
+            id: `chat-${res.assistantMessage.id}`,
+            role: "assistant",
+            text: warmReply,
+            at: res.assistantMessage.createdAt || Date.now(),
+          },
+        ]);
+      } catch (e) {
+        const fallback =
+          e instanceof Error
+            ? `응답 생성 중 오류가 있었어: ${e.message}`
+            : "응답 생성 중 오류가 있었어.";
+        setChatMessages((m) => [
+          ...m,
+          {
+            id: `a-${Date.now()}`,
+            role: "assistant",
+            text: fallback,
+            at: Date.now(),
+          },
+        ]);
+      } finally {
+        setChatTyping(false);
+      }
+    })();
   };
 
   const closePersonCreateModal = () => {
