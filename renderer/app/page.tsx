@@ -767,13 +767,14 @@ export default function HomePage() {
     const allowed = await ensurePrivacyConsentForAnalysis();
     if (!allowed) return false;
     try {
+      const realtimeTitle = selectedRealtimePerson.trim()
+        ? `${selectedRealtimePerson.trim()} 실시간 분석`
+        : "Respondy 실시간 분석";
       const selectedProfile = personProfiles.find(
         (person) => person.name === selectedRealtimePerson,
       );
       await respondy.startRealtimeDetection({
-        title: selectedRealtimePerson.trim()
-          ? `${selectedRealtimePerson.trim()} 실시간 분석`
-          : "Respondy 실시간 분석",
+        title: realtimeTitle,
         situationContext: realtimeReceivedMessage.trim(),
         analysisGoal: "상대 메시지 맥락 기반 답장 추천",
         avatarId: selectedProfile ? Number(selectedProfile.id) : null,
@@ -797,7 +798,7 @@ export default function HomePage() {
     } finally {
       setIsRealtimeMonitoring(false);
       if (refreshHistory && loggedIn) {
-        void loadAnalysisHistory();
+        await loadAnalysisHistory();
       }
     }
   };

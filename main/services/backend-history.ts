@@ -43,12 +43,23 @@ type CaptureAnalysisShape = {
   recommended_replies?: unknown
 }
 
+type CaptureShape = {
+  id?: unknown
+  created_at?: unknown
+  detected_at?: unknown
+  processing_completed_at?: unknown
+  messages?: CaptureMessageShape[]
+  analysis_results?: CaptureAnalysisShape[]
+}
+
 type ListEnvelope<T> =
   | T[]
   | {
       data?: unknown
       results?: unknown
     }
+
+const REALTIME_GROUP_WINDOW_MS = 120_000
 
 function getAnalysisHistoryEndpoint(): string {
   return process.env.ANALYSIS_HISTORY_ENDPOINT?.trim() || '/sessions/'
@@ -81,6 +92,25 @@ function extractList<T>(body: ListEnvelope<T>): T[] {
     }
   }
   return []
+}
+
+function extractAnalysisItem(body: unknown): CaptureAnalysisShape | null {
+  const list = extractList<CaptureAnalysisShape>(
+    body as ListEnvelope<CaptureAnalysisShape>,
+  )
+  if (list.length > 0) return list[0] ?? null
+  if (body && typeof body === 'object') {
+    const data = (body as { data?: unknown }).data
+    if (data && typeof data === 'object') {
+      const nestedList = extractList<CaptureAnalysisShape>(
+        data as ListEnvelope<CaptureAnalysisShape>,
+      )
+      if (nestedList.length > 0) return nestedList[0] ?? null
+      return data as CaptureAnalysisShape
+    }
+    return body as CaptureAnalysisShape
+  }
+  return null
 }
 
 function normalizeSessionId(raw: unknown): number | null {
@@ -127,6 +157,91 @@ function buildHistoryTitle(session: SessionShape, source: 'realtime' | 'manual')
   return `${personName} ${source === 'manual' ? '수동' : '실시간'} 분석`
 }
 
+function parseRecordIds(recordId: string): number[] {
+  const raw = toStringValue(recordId)
+  if (!raw) return []
+  const encoded = raw.startsWith('grp:') ? raw.slice(4) : raw
+  return encoded
+    .split(',')
+    .map((item) => Number(item.trim()))
+    .filter((item) => Number.isFinite(item) && item > 0)
+}
+
+function mergeRecordList(records: AnalysisHistoryRecord[]): AnalysisHistoryRecord | null {
+  if (records.length === 0) return null
+  const sorted = [...records].sort((a, b) => b.at - a.at)
+  const latest = sorted[0]
+  if (!latest) return null
+
+  const allIds = sorted
+    .flatMap((item) => parseRecordIds(item.id))
+    .filter((id, index, arr) => arr.indexOf(id) === index)
+  const mergedSuggestions = sorted
+    .flatMap((item) => item.suggestions)
+    .map((item) => item.trim())
+    .filter(Boolean)
+    .filter((item, index, arr) => arr.indexOf(item) === index)
+  const mergedMessages = sorted
+    .map((item) => toStringValue(item.receivedMessage))
+    .filter(Boolean)
+    .filter((item, index, arr) => arr.indexOf(item) === index)
+    .join('\n')
+    .trim()
+
+  return {
+    ...latest,
+    id: allIds.length > 1 ? `grp:${allIds.join(',')}` : String(allIds[0] ?? latest.id),
+    receivedMessage: mergedMessages || latest.receivedMessage,
+    suggestions:
+      mergedSuggestions.length > 0
+        ? mergedSuggestions
+        : ['추천 답장이 아직 생성되지 않았습니다.'],
+  }
+}
+
+function uniqueStrings(values: string[]): string[] {
+  return values
+    .map((item) => item.trim())
+    .filter(Boolean)
+    .filter((item, index, arr) => arr.indexOf(item) === index)
+}
+
+function collapseRealtimeRecords(records: AnalysisHistoryRecord[]): AnalysisHistoryRecord[] {
+  const sorted = [...records].sort((a, b) => b.at - a.at)
+  const groups: AnalysisHistoryRecord[][] = []
+
+  for (const record of sorted) {
+    if (record.source !== 'realtime') {
+      groups.push([record])
+      continue
+    }
+
+    const lastGroup = groups.at(-1)
+    const last = lastGroup?.[0]
+    if (!last || last.source !== 'realtime') {
+      groups.push([record])
+      continue
+    }
+
+    const sameKey =
+      last.title === record.title &&
+      last.situation === record.situation &&
+      last.relation === record.relation &&
+      last.goalRelation === record.goalRelation
+    const nearEnough = Math.abs(last.at - record.at) <= REALTIME_GROUP_WINDOW_MS
+    if (sameKey && nearEnough) {
+      lastGroup.push(record)
+      continue
+    }
+    groups.push([record])
+  }
+
+  return groups
+    .map((group) => mergeRecordList(group))
+    .filter((item): item is AnalysisHistoryRecord => Boolean(item))
+    .sort((a, b) => b.at - a.at)
+}
+
 function toHistoryRecordFromSession(session: SessionShape): AnalysisHistoryRecord | null {
   const sessionId = normalizeSessionId(session.id)
   if (!sessionId) return null
@@ -168,24 +283,180 @@ function toHistoryRecordFromSession(session: SessionShape): AnalysisHistoryRecor
   }
 }
 
+async function buildDetailedRecordFromSession(
+  sessionId: number,
+  session: SessionShape,
+): Promise<AnalysisHistoryRecord | null> {
+  const base = toHistoryRecordFromSession(session)
+  if (!base) return null
+
+  let captures: CaptureShape[] = []
+  try {
+    const capturesBody = await requestJson<ListEnvelope<CaptureShape>>(
+      `/sessions/${sessionId}/captures/`,
+      {
+        method: 'GET',
+        auth: true,
+      },
+    )
+    captures = extractList(capturesBody)
+  } catch {
+    return base
+  }
+
+  if (captures.length === 0) return base
+
+  const sortedCaptures = [...captures].sort(
+    (a, b) =>
+      toTimestamp(a.processing_completed_at, a.detected_at, a.created_at) -
+      toTimestamp(b.processing_completed_at, b.detected_at, b.created_at),
+  )
+  const perCapture = await Promise.all(
+    sortedCaptures.map(async (capture) => {
+      const captureId = normalizeSessionId(capture.id)
+      const inlineMessages = Array.isArray(capture.messages) ? capture.messages : []
+      const inlineAnalysis = Array.isArray(capture.analysis_results)
+        ? (capture.analysis_results[0] ?? null)
+        : null
+
+      if (!captureId) {
+        return {
+          at: toTimestamp(
+            capture.processing_completed_at,
+            capture.detected_at,
+            capture.created_at,
+          ),
+          messages: inlineMessages,
+          analysis: inlineAnalysis,
+        }
+      }
+
+      const [messages, analysis] = await Promise.all([
+        inlineMessages.length > 0
+          ? Promise.resolve(inlineMessages)
+          : requestJson<ListEnvelope<CaptureMessageShape>>(
+              `/captures/${captureId}/messages/`,
+              {
+                method: 'GET',
+                auth: true,
+              },
+            )
+              .then((body) => extractList(body))
+              .catch(() => []),
+        inlineAnalysis
+          ? Promise.resolve(inlineAnalysis)
+          : requestJson<unknown>(`/captures/${captureId}/analysis/`, {
+              method: 'GET',
+              auth: true,
+            })
+              .then((body) => extractAnalysisItem(body))
+              .catch(() => null),
+      ])
+
+      return {
+        at: toTimestamp(
+          capture.processing_completed_at,
+          capture.detected_at,
+          capture.created_at,
+        ),
+        messages,
+        analysis,
+      }
+    }),
+  )
+
+  const allMessages = perCapture
+    .flatMap((item) => item.messages)
+    .map((msg) => toStringValue(msg?.content))
+    .filter(Boolean)
+  const allAnalyses = perCapture
+    .map((item) => item.analysis)
+    .filter((item): item is CaptureAnalysisShape => Boolean(item))
+
+  const summaryRows = allAnalyses
+    .map((item, index) => {
+      const summary = toStringValue(item.summary) || toStringValue(item.emotion)
+      if (!summary) return ''
+      return `[${index + 1}] ${summary}`
+    })
+    .filter(Boolean)
+  const contextRows = allAnalyses
+    .map((item, index) => {
+      const context = toStringValue(item.strategy) || toStringValue(item.tone)
+      if (!context) return ''
+      return `[${index + 1}] ${context}`
+    })
+    .filter(Boolean)
+  const suggestionRows = allAnalyses.flatMap((item) =>
+    toSuggestions(item.recommended_replies),
+  )
+  const latestCapture = sortedCaptures.at(-1)
+
+  return {
+    ...base,
+    at: toTimestamp(
+      latestCapture?.processing_completed_at,
+      latestCapture?.detected_at,
+      latestCapture?.created_at,
+      session.updated_at,
+      session.created_at,
+    ),
+    receivedMessage: allMessages.join('\n') || base.receivedMessage,
+    emotion: summaryRows.join('\n') || base.emotion,
+    context: contextRows.join('\n') || base.context,
+    suggestions:
+      suggestionRows.length > 0
+        ? suggestionRows
+        : base.suggestions,
+  }
+}
+
 export async function listAnalysisHistory(): Promise<AnalysisHistoryRecord[]> {
   const sessionsBody = await requestJson<ListEnvelope<SessionShape>>('/sessions/', {
     method: 'GET',
     auth: true,
   })
-  return extractList(sessionsBody)
+  const normalized = extractList(sessionsBody)
     .map((session) => toHistoryRecordFromSession(session))
     .filter((item): item is AnalysisHistoryRecord => Boolean(item))
     .sort((a, b) => b.at - a.at)
+  return collapseRealtimeRecords(normalized)
 }
 
 export async function getAnalysisHistoryDetail(
   recordId: string,
 ): Promise<AnalysisHistoryRecord> {
-  const id = toStringValue(recordId)
-  if (!id) {
+  const ids = parseRecordIds(recordId)
+  if (ids.length === 0) {
     throw new Error('분석 기록 id가 올바르지 않습니다.')
   }
+
+  if (ids.length > 1) {
+    const detailList = await Promise.all(
+      ids.map(async (id) => {
+        const body = await requestJson<SessionShape | { data?: unknown }>(
+          `${getAnalysisHistoryEndpoint().replace(/\/+$/, '')}/${id}/`,
+          {
+            method: 'GET',
+            auth: true,
+          },
+        )
+        const source = body && typeof body === 'object' && 'data' in body && body.data
+          ? (body.data as SessionShape)
+          : (body as SessionShape)
+        return buildDetailedRecordFromSession(id, source)
+      }),
+    )
+    const merged = mergeRecordList(
+      detailList.filter((item): item is AnalysisHistoryRecord => Boolean(item)),
+    )
+    if (!merged) {
+      throw new Error('분석 기록 상세 응답 형식이 올바르지 않습니다.')
+    }
+    return merged
+  }
+
+  const id = String(ids[0])
 
   const body = await requestJson<SessionShape | { data?: unknown }>(
     `${getAnalysisHistoryEndpoint().replace(/\/+$/, '')}/${id}/`,
@@ -197,7 +468,7 @@ export async function getAnalysisHistoryDetail(
   const source = body && typeof body === 'object' && 'data' in body && body.data
     ? (body.data as SessionShape)
     : (body as SessionShape)
-  const normalized = toHistoryRecordFromSession(source)
+  const normalized = await buildDetailedRecordFromSession(ids[0] ?? 0, source)
   if (!normalized) {
     throw new Error('분석 기록 상세 응답 형식이 올바르지 않습니다.')
   }
@@ -205,15 +476,16 @@ export async function getAnalysisHistoryDetail(
 }
 
 export async function deleteAnalysisHistoryRecord(recordId: string): Promise<void> {
-  const id = toStringValue(recordId)
-  if (!id) {
+  const ids = parseRecordIds(recordId)
+  if (ids.length === 0) {
     throw new Error('분석 기록 id가 올바르지 않습니다.')
   }
-  await requestJson<unknown>(
-    `/sessions/${id}/`,
-    {
-      method: 'DELETE',
-      auth: true,
-    },
+  await Promise.all(
+    ids.map((id) =>
+      requestJson<unknown>(`/sessions/${id}/`, {
+        method: 'DELETE',
+        auth: true,
+      }),
+    ),
   )
 }

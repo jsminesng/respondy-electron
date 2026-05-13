@@ -61,6 +61,7 @@ export async function extractTextFromImage(
     method: 'POST',
     auth: true,
     body: {
+      session_id: sessionId,
       image_base64: `data:image/png;base64,${image.toString('base64')}`,
       source_type: 'electron',
       screen_context: {

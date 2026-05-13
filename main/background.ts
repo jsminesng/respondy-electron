@@ -62,6 +62,7 @@ let mainWindow: BrowserWindow | null = null
 let regionPickerWindow: BrowserWindow | null = null
 let ocrLoopHandle: ReturnType<typeof startOcrLoop> | null = null
 let isRealtimeDetectionActive = false
+let isRealtimeDetectionTransitioning = false
 let activeRealtimeSessionId: number | null = null
 let resolveRegionPicker: ((value: OcrRegion | null) => void) | null = null
 
@@ -262,45 +263,56 @@ function completeRegionPicker(region: OcrRegion | null) {
   })
 
   ipcMain.handle('ocr:start', async (_evt, input?: RealtimeDetectionStartInput) => {
-    if (isRealtimeDetectionActive) return
-    activeRealtimeSessionId = await createRealtimeSession({
-      title: input?.title,
-      situationContext: input?.situationContext,
-      analysisGoal: input?.analysisGoal,
-      avatarId: input?.avatarId ?? null,
-    })
-    if (DEBUG_OCR_LOG) {
-      console.log('[Respondy][OCR] realtime detection started', {
-        sessionId: activeRealtimeSessionId,
+    if (isRealtimeDetectionActive || isRealtimeDetectionTransitioning) return
+    isRealtimeDetectionTransitioning = true
+    try {
+      activeRealtimeSessionId = await createRealtimeSession({
+        title: input?.title,
+        situationContext: input?.situationContext,
+        analysisGoal: input?.analysisGoal,
+        avatarId: input?.avatarId ?? null,
       })
+      if (DEBUG_OCR_LOG) {
+        console.log('[Respondy][OCR] realtime detection started', {
+          sessionId: activeRealtimeSessionId,
+        })
+      }
+      isRealtimeDetectionActive = true
+      restartOcrLoop()
+    } finally {
+      isRealtimeDetectionTransitioning = false
     }
-    isRealtimeDetectionActive = true
-    restartOcrLoop()
   })
 
   ipcMain.handle('ocr:stop', async () => {
-    const sessionId = activeRealtimeSessionId
-    if (sessionId) {
-      try {
-        await endRealtimeSession(sessionId)
-      } catch (error) {
-        const message =
-          error instanceof Error ? error.message : 'failed to end realtime session'
-        console.error('[Respondy][OCR] failed to end realtime session', {
+    if (isRealtimeDetectionTransitioning) return
+    isRealtimeDetectionTransitioning = true
+    try {
+      const sessionId = activeRealtimeSessionId
+      if (sessionId) {
+        try {
+          await endRealtimeSession(sessionId)
+        } catch (error) {
+          const message =
+            error instanceof Error ? error.message : 'failed to end realtime session'
+          console.error('[Respondy][OCR] failed to end realtime session', {
+            sessionId,
+            message,
+          })
+        }
+      }
+      if (DEBUG_OCR_LOG) {
+        console.log('[Respondy][OCR] realtime detection stopped', {
           sessionId,
-          message,
         })
       }
+      isRealtimeDetectionActive = false
+      activeRealtimeSessionId = null
+      ocrLoopHandle?.stop()
+      ocrLoopHandle = null
+    } finally {
+      isRealtimeDetectionTransitioning = false
     }
-    if (DEBUG_OCR_LOG) {
-      console.log('[Respondy][OCR] realtime detection stopped', {
-        sessionId,
-      })
-    }
-    isRealtimeDetectionActive = false
-    activeRealtimeSessionId = null
-    ocrLoopHandle?.stop()
-    ocrLoopHandle = null
   })
 
   ipcMain.handle('ocr:get-runtime-state', () => ({
