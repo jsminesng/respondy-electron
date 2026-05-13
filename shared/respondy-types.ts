@@ -188,6 +188,8 @@ export type RespondyApi = {
   ) => Promise<AvatarProfile>;
   deleteAvatar: (avatarId: number) => Promise<void>;
   listAnalysisHistory: () => Promise<AnalysisHistoryRecord[]>;
+  getAnalysisHistoryDetail: (recordId: string) => Promise<AnalysisHistoryRecord>;
+  deleteAnalysisHistoryRecord: (recordId: string) => Promise<void>;
   analyzeManualConversation: (
     payload: ManualAnalysisInput,
   ) => Promise<ManualAnalysisResult>;

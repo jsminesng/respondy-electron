@@ -85,6 +85,12 @@ const respondy: RespondyApi = {
   listAnalysisHistory() {
     return ipcRenderer.invoke("analysis:history:list");
   },
+  getAnalysisHistoryDetail(recordId: string) {
+    return ipcRenderer.invoke("analysis:history:detail", recordId);
+  },
+  deleteAnalysisHistoryRecord(recordId: string) {
+    return ipcRenderer.invoke("analysis:history:delete", recordId);
+  },
   analyzeManualConversation(payload: ManualAnalysisInput) {
     return ipcRenderer.invoke("analysis:manual", payload);
   },

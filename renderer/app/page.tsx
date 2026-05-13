@@ -147,6 +147,8 @@ export default function HomePage() {
   const [isManualAnalyzing, setIsManualAnalyzing] = useState(false);
   const [analysisHistory, setAnalysisHistory] = useState<AnalysisRecord[]>([]);
   const [historyDetailId, setHistoryDetailId] = useState<string | null>(null);
+  const [historyDetailRecord, setHistoryDetailRecord] =
+    useState<AnalysisRecord | null>(null);
   const [personDetailId, setPersonDetailId] = useState<string | null>(null);
   const [editPersonName, setEditPersonName] = useState("");
   const [editPersonBirthDate, setEditPersonBirthDate] = useState("");
@@ -291,6 +293,31 @@ export default function HomePage() {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
+  }, [historyDetailId]);
+
+  useEffect(() => {
+    if (!historyDetailId) {
+      setHistoryDetailRecord(null);
+      return;
+    }
+    const respondy = getRespondy();
+    if (!respondy) return;
+    let cancelled = false;
+    void respondy
+      .getAnalysisHistoryDetail(historyDetailId)
+      .then((detail) => {
+        if (cancelled) return;
+        setHistoryDetailRecord(detail);
+        setAnalysisHistory((prev) =>
+          prev.map((item) => (item.id === detail.id ? detail : item)),
+        );
+      })
+      .catch(() => {
+        if (!cancelled) setHistoryDetailRecord(null);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [historyDetailId]);
 
   function applyAuthState(state: AuthState) {
@@ -1037,12 +1064,21 @@ export default function HomePage() {
     }
   };
 
-  const removeAnalysisRecord = (recordId: string) => {
+  const removeAnalysisRecord = async (recordId: string) => {
     if (!window.confirm("삭제하시겠습니까?")) return;
-    setAnalysisHistory((prev) =>
-      prev.filter((record) => record.id !== recordId),
-    );
-    if (historyDetailId === recordId) setHistoryDetailId(null);
+    const respondy = getRespondy();
+    if (!respondy) return;
+    try {
+      await respondy.deleteAnalysisHistoryRecord(recordId);
+      setAnalysisHistory((prev) =>
+        prev.filter((record) => record.id !== recordId),
+      );
+      if (historyDetailId === recordId) setHistoryDetailId(null);
+    } catch (e) {
+      const message =
+        e instanceof Error ? e.message : "분석 기록 삭제 중 오류가 발생했습니다.";
+      window.alert(message);
+    }
   };
 
   const removePersonProfile = async (personId: string) => {
@@ -1636,7 +1672,7 @@ export default function HomePage() {
                     className="respondy-item-delete-btn"
                     onClick={(e) => {
                       e.stopPropagation();
-                      removeAnalysisRecord(rec.id);
+                      void removeAnalysisRecord(rec.id);
                     }}
                   >
                     삭제
@@ -1785,9 +1821,11 @@ export default function HomePage() {
     return renderRealtimeView();
   };
 
-  const historyDetail = historyDetailId
-    ? analysisHistory.find((r) => r.id === historyDetailId)
-    : undefined;
+  const historyDetail =
+    historyDetailRecord ??
+    (historyDetailId
+      ? analysisHistory.find((r) => r.id === historyDetailId) ?? null
+      : null);
   const historyPersonFromTitle = historyDetail?.title
     ? personProfiles.find((person) => historyDetail.title.includes(person.name))
     : undefined;

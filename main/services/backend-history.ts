@@ -44,6 +44,34 @@ type ListEnvelope<T> =
       results?: unknown
     }
 
+type AnalysisRecordEnvelope = {
+  id?: unknown
+  source?: unknown
+  source_type?: unknown
+  title?: unknown
+  relation?: unknown
+  current_relation?: unknown
+  goal_relation?: unknown
+  target_relation?: unknown
+  situation?: unknown
+  situation_context?: unknown
+  received_message?: unknown
+  emotion?: unknown
+  summary?: unknown
+  context?: unknown
+  strategy?: unknown
+  recommended_replies?: unknown
+  created_at?: unknown
+  analyzed_at?: unknown
+  updated_at?: unknown
+  latest_message?: unknown
+  latest_analysis?: unknown
+}
+
+function getAnalysisHistoryEndpoint(): string {
+  return process.env.ANALYSIS_HISTORY_ENDPOINT?.trim() || '/analysis-history/'
+}
+
 function toStringValue(value: unknown): string {
   return typeof value === 'string' ? value.trim() : ''
 }
@@ -77,6 +105,83 @@ function normalizeSessionId(raw: unknown): number | null {
   const id = Number(raw)
   if (!Number.isFinite(id) || id <= 0) return null
   return id
+}
+
+function toSuggestions(input: unknown): string[] {
+  if (!Array.isArray(input)) return []
+  return input
+    .map((item) => toStringValue(item))
+    .filter(Boolean)
+}
+
+function toHistorySource(value: unknown): 'realtime' | 'manual' {
+  const raw = toStringValue(value).toLowerCase()
+  if (raw.includes('manual')) return 'manual'
+  return 'realtime'
+}
+
+function normalizeHistoryFromRecord(raw: AnalysisRecordEnvelope): AnalysisHistoryRecord | null {
+  const id = toStringValue(raw.id)
+  if (!id) return null
+
+  const latestMessage =
+    raw.latest_message && typeof raw.latest_message === 'object'
+      ? (raw.latest_message as { content?: unknown }).content
+      : undefined
+  const latestAnalysis =
+    raw.latest_analysis && typeof raw.latest_analysis === 'object'
+      ? (raw.latest_analysis as Record<string, unknown>)
+      : null
+
+  const emotion =
+    toStringValue(raw.summary) ||
+    toStringValue(raw.emotion) ||
+    toStringValue(latestAnalysis?.summary) ||
+    toStringValue(latestAnalysis?.emotion) ||
+    '분석 결과 없음'
+  const context =
+    toStringValue(raw.strategy) ||
+    toStringValue(raw.context) ||
+    toStringValue(latestAnalysis?.strategy) ||
+    toStringValue(latestAnalysis?.tone) ||
+    '맥락 결과 없음'
+  const suggestionsPrimary = toSuggestions(raw.recommended_replies)
+  const suggestionsFallback = toSuggestions(latestAnalysis?.recommended_replies)
+  const suggestions =
+    suggestionsPrimary.length > 0
+      ? suggestionsPrimary
+      : suggestionsFallback.length > 0
+        ? suggestionsFallback
+        : ['추천 답장이 아직 생성되지 않았습니다.']
+
+  return {
+    id,
+    at: toTimestamp(raw.analyzed_at, raw.created_at, raw.updated_at),
+    source: toHistorySource(raw.source ?? raw.source_type),
+    title: toStringValue(raw.title) || '분석 기록',
+    relation: toStringValue(raw.relation ?? raw.current_relation) || '—',
+    goalRelation: toStringValue(raw.goal_relation ?? raw.target_relation) || '—',
+    situation: toStringValue(raw.situation_context ?? raw.situation) || '실시간 감지',
+    receivedMessage:
+      toStringValue(raw.received_message) || toStringValue(latestMessage) || undefined,
+    emotion,
+    context,
+    suggestions,
+  }
+}
+
+async function listFromRecordEndpoint(): Promise<AnalysisHistoryRecord[]> {
+  const body = await requestJson<ListEnvelope<AnalysisRecordEnvelope>>(
+    getAnalysisHistoryEndpoint(),
+    {
+      method: 'GET',
+      auth: true,
+    },
+  )
+  return extractList(body)
+    .map((item) => normalizeHistoryFromRecord(item))
+    .filter((item): item is AnalysisHistoryRecord => Boolean(item))
+    .sort((a, b) => b.at - a.at)
 }
 
 function extractAnalysisItem(body: unknown): CaptureAnalysisShape | null {
@@ -184,6 +289,12 @@ function toHistoryRecord(
 }
 
 export async function listAnalysisHistory(): Promise<AnalysisHistoryRecord[]> {
+  try {
+    return await listFromRecordEndpoint()
+  } catch {
+    // fall back to session/capture traversal when dedicated API is unavailable
+  }
+
   const sessionsBody = await requestJson<ListEnvelope<SessionShape>>('/sessions/', {
     method: 'GET',
     auth: true,
@@ -245,4 +356,43 @@ export async function listAnalysisHistory(): Promise<AnalysisHistoryRecord[]> {
   return perSessionHistory
     .flat()
     .sort((a, b) => b.at - a.at)
+}
+
+export async function getAnalysisHistoryDetail(
+  recordId: string,
+): Promise<AnalysisHistoryRecord> {
+  const id = toStringValue(recordId)
+  if (!id) {
+    throw new Error('분석 기록 id가 올바르지 않습니다.')
+  }
+  const body = await requestJson<AnalysisRecordEnvelope | { data?: unknown }>(
+    `${getAnalysisHistoryEndpoint().replace(/\/+$/, '')}/${id}/`,
+    {
+      method: 'GET',
+      auth: true,
+    },
+  )
+  const source =
+    body && typeof body === 'object' && 'data' in body && body.data
+      ? (body.data as AnalysisRecordEnvelope)
+      : (body as AnalysisRecordEnvelope)
+  const normalized = normalizeHistoryFromRecord(source)
+  if (!normalized) {
+    throw new Error('분석 기록 상세 응답 형식이 올바르지 않습니다.')
+  }
+  return normalized
+}
+
+export async function deleteAnalysisHistoryRecord(recordId: string): Promise<void> {
+  const id = toStringValue(recordId)
+  if (!id) {
+    throw new Error('분석 기록 id가 올바르지 않습니다.')
+  }
+  await requestJson<unknown>(
+    `${getAnalysisHistoryEndpoint().replace(/\/+$/, '')}/${id}/`,
+    {
+      method: 'DELETE',
+      auth: true,
+    },
+  )
 }

@@ -32,7 +32,11 @@ import {
   listAvatars,
   updateAvatar,
 } from './services/backend-avatar'
-import { listAnalysisHistory } from './services/backend-history'
+import {
+  deleteAnalysisHistoryRecord,
+  getAnalysisHistoryDetail,
+  listAnalysisHistory,
+} from './services/backend-history'
 import { analyzeManualConversation } from './services/backend-manual'
 import { getUserProfile, updateUserProfile } from './services/backend-profile'
 import { changePassword } from './services/backend-password'
@@ -326,6 +330,12 @@ function completeRegionPicker(region: OcrRegion | null) {
     deleteAvatar(avatarId),
   )
   ipcMain.handle('analysis:history:list', () => listAnalysisHistory())
+  ipcMain.handle('analysis:history:detail', (_evt, recordId: string) =>
+    getAnalysisHistoryDetail(recordId),
+  )
+  ipcMain.handle('analysis:history:delete', (_evt, recordId: string) =>
+    deleteAnalysisHistoryRecord(recordId),
+  )
   ipcMain.handle('analysis:manual', (_evt, payload: ManualAnalysisInput) =>
     analyzeManualConversation(payload),
   )
