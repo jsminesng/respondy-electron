@@ -22,6 +22,8 @@ type PersonProfile = {
   currentRelation: string;
   goalRelation: string;
   personality: string;
+  speechStyle: string;
+  background: string;
   notes: string;
   createdAt: number;
 };
@@ -79,6 +81,8 @@ function toPersonProfile(avatar: BackendAvatarProfile): PersonProfile {
     currentRelation: avatar.currentRelation,
     goalRelation: avatar.targetRelation,
     personality: avatar.personality,
+    speechStyle: avatar.speechStyle,
+    background: avatar.background,
     notes: avatar.memo,
     createdAt: avatar.createdAt,
   };
@@ -128,6 +132,8 @@ export default function HomePage() {
   const [newPersonCurrentRelation, setNewPersonCurrentRelation] = useState("");
   const [newPersonGoalRelation, setNewPersonGoalRelation] = useState("");
   const [newPersonPersonality, setNewPersonPersonality] = useState("");
+  const [newPersonSpeechStyle, setNewPersonSpeechStyle] = useState("");
+  const [newPersonBackground, setNewPersonBackground] = useState("");
   const [newPersonNotes, setNewPersonNotes] = useState("");
   const [selectedManualPerson, setSelectedManualPerson] = useState("");
   const [manualSituation, setManualSituation] = useState("");
@@ -148,6 +154,8 @@ export default function HomePage() {
     useState("");
   const [editPersonGoalRelation, setEditPersonGoalRelation] = useState("");
   const [editPersonPersonality, setEditPersonPersonality] = useState("");
+  const [editPersonSpeechStyle, setEditPersonSpeechStyle] = useState("");
+  const [editPersonBackground, setEditPersonBackground] = useState("");
   const [editPersonNotes, setEditPersonNotes] = useState("");
   const [authBusy, setAuthBusy] = useState(false);
   const [authReady, setAuthReady] = useState(false);
@@ -310,6 +318,8 @@ export default function HomePage() {
     setNewPersonCurrentRelation("");
     setNewPersonGoalRelation("");
     setNewPersonPersonality("");
+    setNewPersonSpeechStyle("");
+    setNewPersonBackground("");
     setNewPersonNotes("");
     setShowRealtimeResults(false);
     setRealtimeResult(EMPTY_REALTIME_RESULT);
@@ -940,6 +950,8 @@ export default function HomePage() {
         currentRelation: newPersonCurrentRelation.trim(),
         targetRelation: newPersonGoalRelation.trim(),
         personality: newPersonPersonality.trim(),
+        speechStyle: newPersonSpeechStyle.trim(),
+        background: newPersonBackground.trim(),
         memo: newPersonNotes.trim(),
       });
       const nextProfile = toPersonProfile(created);
@@ -963,6 +975,8 @@ export default function HomePage() {
     setEditPersonCurrentRelation(person.currentRelation);
     setEditPersonGoalRelation(person.goalRelation);
     setEditPersonPersonality(person.personality);
+    setEditPersonSpeechStyle(person.speechStyle);
+    setEditPersonBackground(person.background);
     setEditPersonNotes(person.notes);
   };
 
@@ -973,6 +987,8 @@ export default function HomePage() {
     setEditPersonCurrentRelation("");
     setEditPersonGoalRelation("");
     setEditPersonPersonality("");
+    setEditPersonSpeechStyle("");
+    setEditPersonBackground("");
     setEditPersonNotes("");
   };
 
@@ -998,6 +1014,8 @@ export default function HomePage() {
         currentRelation: editPersonCurrentRelation.trim(),
         targetRelation: editPersonGoalRelation.trim(),
         personality: editPersonPersonality.trim(),
+        speechStyle: editPersonSpeechStyle.trim(),
+        background: editPersonBackground.trim(),
         memo: editPersonNotes.trim(),
       });
       const nextProfile = toPersonProfile(updated);
@@ -2204,6 +2222,26 @@ export default function HomePage() {
                   onChange={(e) => setNewPersonPersonality(e.target.value)}
                   placeholder="예: 조용하지만 배려심이 많음"
                 />
+                <label className="respondy-label" htmlFor="person-speech-style">
+                  말투
+                </label>
+                <textarea
+                  id="person-speech-style"
+                  className="respondy-textarea"
+                  value={newPersonSpeechStyle}
+                  onChange={(e) => setNewPersonSpeechStyle(e.target.value)}
+                  placeholder="예: 짧고 캐주얼한 말투를 자주 사용함"
+                />
+                <label className="respondy-label" htmlFor="person-background">
+                  배경
+                </label>
+                <textarea
+                  id="person-background"
+                  className="respondy-textarea"
+                  value={newPersonBackground}
+                  onChange={(e) => setNewPersonBackground(e.target.value)}
+                  placeholder="예: 동아리에서 자주 만나고 수업도 같이 듣는 사이"
+                />
                 <label className="respondy-label" htmlFor="person-notes">
                   특이사항
                 </label>
@@ -2350,6 +2388,30 @@ export default function HomePage() {
                   className="respondy-textarea"
                   value={editPersonPersonality}
                   onChange={(e) => setEditPersonPersonality(e.target.value)}
+                />
+                <label
+                  className="respondy-label"
+                  htmlFor="person-detail-speech-style"
+                >
+                  말투
+                </label>
+                <textarea
+                  id="person-detail-speech-style"
+                  className="respondy-textarea"
+                  value={editPersonSpeechStyle}
+                  onChange={(e) => setEditPersonSpeechStyle(e.target.value)}
+                />
+                <label
+                  className="respondy-label"
+                  htmlFor="person-detail-background"
+                >
+                  배경
+                </label>
+                <textarea
+                  id="person-detail-background"
+                  className="respondy-textarea"
+                  value={editPersonBackground}
+                  onChange={(e) => setEditPersonBackground(e.target.value)}
                 />
                 <label className="respondy-label" htmlFor="person-detail-notes">
                   특이사항

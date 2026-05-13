@@ -94,6 +94,8 @@ export type AvatarProfile = {
   currentRelation: string;
   targetRelation: string;
   personality: string;
+  speechStyle: string;
+  background: string;
   memo: string;
   createdAt: number;
 };
@@ -104,6 +106,8 @@ export type AvatarCreateInput = {
   currentRelation?: string;
   targetRelation?: string;
   personality?: string;
+  speechStyle?: string;
+  background?: string;
   memo?: string;
 };
 

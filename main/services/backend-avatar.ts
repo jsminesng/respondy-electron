@@ -7,6 +7,8 @@ type AvatarEnvelope = {
   current_relation?: unknown
   target_relation?: unknown
   personality?: unknown
+  speech_style?: unknown
+  background?: unknown
   memo?: unknown
   created_at?: unknown
 }
@@ -31,6 +33,8 @@ export type AvatarProfile = {
   currentRelation: string
   targetRelation: string
   personality: string
+  speechStyle: string
+  background: string
   memo: string
   createdAt: number
 }
@@ -41,6 +45,8 @@ export type AvatarCreateInput = {
   currentRelation?: string
   targetRelation?: string
   personality?: string
+  speechStyle?: string
+  background?: string
   memo?: string
 }
 
@@ -70,6 +76,8 @@ function normalizeAvatar(raw: AvatarEnvelope): AvatarProfile {
     currentRelation: toStringValue(raw.current_relation),
     targetRelation: toStringValue(raw.target_relation),
     personality: toStringValue(raw.personality),
+    speechStyle: toStringValue(raw.speech_style),
+    background: toStringValue(raw.background),
     memo: toStringValue(raw.memo),
     createdAt: toTimestamp(raw.created_at),
   }
@@ -108,6 +116,8 @@ function toPayload(input: AvatarCreateInput) {
     current_relation: input.currentRelation?.trim() || '',
     target_relation: input.targetRelation?.trim() || '',
     personality: input.personality?.trim() || '',
+    speech_style: input.speechStyle?.trim() || '',
+    background: input.background?.trim() || '',
     memo: input.memo?.trim() || '',
     is_active: true,
   }
