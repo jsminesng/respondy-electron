@@ -95,18 +95,24 @@ export async function updateUserProfile(
 ): Promise<UserProfile> {
   const name = payload.name.trim()
   const email = payload.email.trim()
-  if (!name || !email) {
-    throw new Error('이름과 이메일을 입력해 주세요.')
+  const birthDate = payload.birthDate.trim()
+  if (!name && !email && !birthDate) {
+    throw new Error('수정할 프로필 항목을 입력해 주세요.')
   }
+
+  const bodyPayload: {
+    name?: string
+    email?: string
+    birth_date?: string
+  } = {}
+  if (name) bodyPayload.name = name
+  if (email) bodyPayload.email = email
+  if (birthDate) bodyPayload.birth_date = birthDate
 
   const body = await requestJson<ProfileResponse>(getProfileEndpoint(), {
     method: 'PATCH',
     auth: true,
-    body: {
-      name,
-      email,
-      birth_date: payload.birthDate.trim(),
-    },
+    body: bodyPayload,
   })
 
   return normalizeProfile(body)

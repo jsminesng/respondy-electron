@@ -105,7 +105,7 @@ export default function HomePage() {
   const [loggedIn, setLoggedIn] = useState(false);
   const [userName, setUserName] = useState("ABC");
   const [profileEmail, setProfileEmail] = useState("abc@kookmin.ac.kr");
-  const [profileBirthDate, setProfileBirthDate] = useState("2001-01-01");
+  const [profileBirthDate, setProfileBirthDate] = useState("");
   const [privacyConsentAt, setPrivacyConsentAt] = useState("");
   const [privacyConsentLoaded, setPrivacyConsentLoaded] = useState(false);
   const [showPrivacyConsentModal, setShowPrivacyConsentModal] = useState(false);
@@ -432,9 +432,7 @@ export default function HomePage() {
       if (profile.email?.trim()) {
         setProfileEmail(profile.email.trim());
       }
-      if (profile.birthDate?.trim()) {
-        setProfileBirthDate(profile.birthDate.trim());
-      }
+      setProfileBirthDate(profile.birthDate?.trim() || "");
       setPrivacyConsentAt(profile.privacyConsentAt?.trim() || "");
     } catch (e) {
       const message =
@@ -562,6 +560,11 @@ export default function HomePage() {
       });
       applyAuthState(state);
       resetSessionUi();
+      await respondy.updateUserProfile({
+        name: username,
+        email: email || state.user?.email?.trim() || "",
+        birthDate,
+      });
       await loadPersonProfiles();
       setProfileBirthDate(birthDate);
       form.reset();

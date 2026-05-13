@@ -102,6 +102,31 @@ function toHistorySource(value: unknown): 'realtime' | 'manual' {
   return 'realtime'
 }
 
+function toSummaryKeyword(value: unknown): string {
+  const text = toStringValue(value)
+    .replace(/\s+/g, ' ')
+    .replace(/[.!?]+$/g, '')
+    .trim()
+  if (!text) return ''
+
+  const firstChunk = text.split(/[.,:;()\[\]\n]/)[0]?.trim() || text
+  if (firstChunk.length <= 16) return firstChunk
+  return `${firstChunk.slice(0, 16).trim()}...`
+}
+
+function buildHistoryTitle(session: SessionShape, source: 'realtime' | 'manual'): string {
+  const personName =
+    toStringValue(session.avatar_name) || toStringValue(session.avatar?.name) || '상대'
+  const keyword = toSummaryKeyword(session.latest_summary) || toSummaryKeyword(session.latest_analysis?.summary)
+  if (keyword) {
+    return `${personName} · ${keyword}`
+  }
+
+  const rawTitle = toStringValue(session.title)
+  if (rawTitle) return rawTitle
+  return `${personName} ${source === 'manual' ? '수동' : '실시간'} 분석`
+}
+
 function toHistoryRecordFromSession(session: SessionShape): AnalysisHistoryRecord | null {
   const sessionId = normalizeSessionId(session.id)
   if (!sessionId) return null
@@ -126,14 +151,13 @@ function toHistoryRecordFromSession(session: SessionShape): AnalysisHistoryRecor
   const tone = toStringValue(session.latest_tone) || toStringValue(latestAnalysis?.tone)
   const strategy = toStringValue(latestAnalysis?.strategy)
   const suggestions = toSuggestions(latestAnalysis?.recommended_replies)
+  const source = toHistorySource(session.analysis_type)
 
   return {
     id: String(sessionId),
     at: toTimestamp(session.updated_at, session.created_at),
-    source: toHistorySource(session.analysis_type),
-    title:
-      toStringValue(session.title) ||
-      `${toStringValue(session.avatar_name) || toStringValue(session.avatar?.name) || '상대'} 대화 분석`,
+    source,
+    title: buildHistoryTitle(session, source),
     relation: toStringValue(session.avatar?.current_relation) || '—',
     goalRelation: toStringValue(session.avatar?.target_relation) || '—',
     situation: toStringValue(session.situation_context) || '분석 기록',
