@@ -49,3 +49,15 @@ export async function createRealtimeSession(params?: {
   })
   return normalizeSessionId(body)
 }
+
+export async function endRealtimeSession(sessionId: number): Promise<void> {
+  const id = Number(sessionId)
+  if (!Number.isFinite(id) || id <= 0) {
+    throw new Error('종료할 세션 id가 올바르지 않습니다.')
+  }
+
+  await requestJson<unknown>(`/sessions/${id}/end/`, {
+    method: 'POST',
+    auth: true,
+  })
+}

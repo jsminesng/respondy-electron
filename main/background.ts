@@ -25,7 +25,7 @@ import {
 } from './services/auth-service'
 import { ocrSettingsStore } from './services/ocr-settings'
 import { startOcrLoop } from './services/ocr-loop'
-import { createRealtimeSession } from './services/backend-session'
+import { createRealtimeSession, endRealtimeSession } from './services/backend-session'
 import {
   createAvatar,
   deleteAvatar,
@@ -274,10 +274,23 @@ function completeRegionPicker(region: OcrRegion | null) {
     restartOcrLoop()
   })
 
-  ipcMain.handle('ocr:stop', () => {
+  ipcMain.handle('ocr:stop', async () => {
+    const sessionId = activeRealtimeSessionId
+    if (sessionId) {
+      try {
+        await endRealtimeSession(sessionId)
+      } catch (error) {
+        const message =
+          error instanceof Error ? error.message : 'failed to end realtime session'
+        console.error('[Respondy][OCR] failed to end realtime session', {
+          sessionId,
+          message,
+        })
+      }
+    }
     if (DEBUG_OCR_LOG) {
       console.log('[Respondy][OCR] realtime detection stopped', {
-        sessionId: activeRealtimeSessionId,
+        sessionId,
       })
     }
     isRealtimeDetectionActive = false
