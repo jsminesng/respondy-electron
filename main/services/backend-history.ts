@@ -267,6 +267,14 @@ function toHistoryRecordFromSession(session: SessionShape): AnalysisHistoryRecor
   const strategy = toStringValue(latestAnalysis?.strategy)
   const suggestions = toSuggestions(latestAnalysis?.recommended_replies)
   const source = toHistorySource(session.analysis_type)
+  const hasMeaningfulAnalysis =
+    Boolean(summary) ||
+    Boolean(emotion) ||
+    Boolean(strategy) ||
+    Boolean(tone) ||
+    suggestions.length > 0 ||
+    Boolean(receivedMessage)
+  if (!hasMeaningfulAnalysis) return null
 
   return {
     id: String(sessionId),

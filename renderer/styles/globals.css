@@ -219,6 +219,14 @@
     @apply mt-4 h-11 w-full cursor-pointer rounded-full border-none bg-[#4338ca] text-base font-semibold text-white transition-colors hover:bg-[#4f46e5] disabled:cursor-not-allowed disabled:opacity-45 disabled:hover:bg-[#4338ca] sm:mt-5 sm:h-12 sm:text-lg;
   }
 
+  .respondy-realtime-action-stack {
+    @apply mt-3 grid gap-1.5 sm:mt-4 sm:gap-2;
+  }
+
+  .respondy-realtime-action-stack .respondy-primary-btn {
+    @apply mt-0;
+  }
+
   .respondy-profile-actions {
     @apply mt-4 grid gap-2 sm:mt-5;
   }

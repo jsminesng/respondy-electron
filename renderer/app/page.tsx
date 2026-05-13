@@ -66,6 +66,14 @@ const AGE_GROUP_OPTIONS = [
   "60대 이상",
 ] as const;
 
+function validatePasswordPolicy(password: string): string | null {
+  if (password.length < 8) return "비밀번호는 8자 이상이어야 합니다.";
+  if (!/[A-Za-z]/.test(password))
+    return "비밀번호에 영문자를 최소 1자 포함해 주세요.";
+  if (!/\d/.test(password)) return "비밀번호에 숫자를 최소 1자 포함해 주세요.";
+  return null;
+}
+
 function formatChatTime(ts: number) {
   return new Date(ts).toLocaleTimeString("ko-KR", {
     hour: "2-digit",
@@ -147,6 +155,7 @@ export default function HomePage() {
   const [showManualResults, setShowManualResults] = useState(false);
   const [isRealtimeMonitoring, setIsRealtimeMonitoring] = useState(false);
   const [isPickingRegion, setIsPickingRegion] = useState(false);
+  const [hasPickedRealtimeRegion, setHasPickedRealtimeRegion] = useState(false);
   const [realtimeResult, setRealtimeResult] = useState(EMPTY_REALTIME_RESULT);
   const [manualResult, setManualResult] = useState(EMPTY_MANUAL_RESULT);
   const [isManualAnalyzing, setIsManualAnalyzing] = useState(false);
@@ -167,6 +176,7 @@ export default function HomePage() {
   const [authBusy, setAuthBusy] = useState(false);
   const [authReady, setAuthReady] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
+  const [isCreatingPerson, setIsCreatingPerson] = useState(false);
   const [copiedSuggestionId, setCopiedSuggestionId] = useState<string | null>(
     null,
   );
@@ -217,6 +227,9 @@ export default function HomePage() {
       const context = payload.strategy?.trim() || payload.tone?.trim() || "";
       const suggestions =
         payload.recommendedReplies?.filter((item) => item.trim()) ?? [];
+      if (!emotion && !context && suggestions.length === 0) {
+        return;
+      }
 
       setRealtimeResult({
         emotion,
@@ -283,8 +296,10 @@ export default function HomePage() {
       setPrivacyConsentLoaded(false);
       setShowPrivacyConsentModal(false);
       setPrivacyConsentChecked(false);
+      setHasPickedRealtimeRegion(false);
       return;
     }
+    setHasPickedRealtimeRegion(false);
     setPrivacyConsentLoaded(false);
     void loadUserProfile();
     void loadPersonProfiles();
@@ -381,6 +396,7 @@ export default function HomePage() {
     setShowRealtimeResults(false);
     setRealtimeResult(EMPTY_REALTIME_RESULT);
     setIsRealtimeMonitoring(false);
+    setHasPickedRealtimeRegion(false);
     setSelectedManualPerson("");
     setManualSituation("");
     setManualReceivedMessage("");
@@ -545,6 +561,11 @@ export default function HomePage() {
       setAuthError("생년월일을 입력해 주세요.");
       return;
     }
+    const passwordPolicyError = validatePasswordPolicy(password);
+    if (passwordPolicyError) {
+      setAuthError(passwordPolicyError);
+      return;
+    }
     if (password !== confirmPassword) {
       setAuthError("비밀번호와 비밀번호 확인이 일치하지 않습니다.");
       return;
@@ -569,7 +590,12 @@ export default function HomePage() {
       setProfileBirthDate(birthDate);
       form.reset();
     } catch (e) {
-      setAuthError(e instanceof Error ? e.message : "회원가입에 실패했습니다.");
+      const message = e instanceof Error ? e.message : "회원가입에 실패했습니다.";
+      if (/username.*already|already exists|중복/i.test(message)) {
+        setAuthError("이미 사용 중인 아이디입니다. 다른 아이디를 입력해 주세요.");
+      } else {
+        setAuthError(message);
+      }
     } finally {
       setAuthBusy(false);
     }
@@ -585,13 +611,14 @@ export default function HomePage() {
         >
           <h2 className="respondy-title">회원가입</h2>
           <label className="respondy-label" htmlFor="signup-name">
-            이름
+            아이디
           </label>
           <input
             id="signup-name"
             name="signup-name"
             className="respondy-input"
-            autoComplete="name"
+            autoComplete="username"
+            placeholder="아이디를 입력하세요"
             disabled={authBusy}
           />
           <label className="respondy-label" htmlFor="signup-email">
@@ -766,6 +793,10 @@ export default function HomePage() {
     }
     const allowed = await ensurePrivacyConsentForAnalysis();
     if (!allowed) return false;
+    if (!hasPickedRealtimeRegion) {
+      window.alert("먼저 캡처 영역 선택 버튼을 눌러 영역을 설정해 주세요.");
+      return false;
+    }
     try {
       const realtimeTitle = selectedRealtimePerson.trim()
         ? `${selectedRealtimePerson.trim()} 실시간 분석`
@@ -825,8 +856,9 @@ export default function HomePage() {
       setIsPickingRegion(true);
       const picked = await respondy.pickOcrRegion();
       if (!picked) return;
+      setHasPickedRealtimeRegion(true);
       window.alert(
-        `영역 설정 완료: x=${picked.x}, y=${picked.y}, w=${picked.width}, h=${picked.height}`,
+        `캡처 영역 설정 완료: x=${picked.x}, y=${picked.y}, w=${picked.width}, h=${picked.height}`,
       );
     } catch (e) {
       const message =
@@ -958,9 +990,9 @@ export default function HomePage() {
       window.alert("Electron 환경에서만 프로필 수정이 가능합니다.");
       return;
     }
-    const nextName = editProfileName.trim();
+    const nextName = userName.trim();
     const nextEmail = editProfileEmail.trim();
-    if (!nextName || !nextEmail) return;
+    if (!nextEmail) return;
     try {
       setAuthBusy(true);
       const profile = await respondy.updateUserProfile({
@@ -998,6 +1030,11 @@ export default function HomePage() {
       );
       return;
     }
+    const passwordPolicyError = validatePasswordPolicy(newPasswordInput);
+    if (passwordPolicyError) {
+      setPasswordChangeError(passwordPolicyError);
+      return;
+    }
     try {
       setAuthBusy(true);
       setPasswordChangeError("");
@@ -1020,6 +1057,7 @@ export default function HomePage() {
   };
 
   const createPersonProfile = async () => {
+    if (isCreatingPerson) return;
     const respondy = getRespondy();
     if (!respondy) {
       window.alert("Electron 환경에서만 인물 생성이 가능합니다.");
@@ -1038,6 +1076,7 @@ export default function HomePage() {
       return;
     }
     try {
+      setIsCreatingPerson(true);
       const created = await respondy.createAvatar({
         name: personName,
         ageGroup: newPersonBirthDate,
@@ -1059,6 +1098,8 @@ export default function HomePage() {
       const message =
         e instanceof Error ? e.message : "인물 생성 중 오류가 발생했습니다.";
       window.alert(message);
+    } finally {
+      setIsCreatingPerson(false);
     }
   };
 
@@ -1224,21 +1265,23 @@ export default function HomePage() {
           placeholder="분석할 상황을 입력하세요"
           autoComplete="off"
         />
-        <button
-          className={`respondy-primary-btn ${isRealtimeMonitoring ? "respondy-danger-btn" : ""}`}
-          type="button"
-          onClick={() => void handleRealtimeMonitoringToggle()}
-        >
-          {isRealtimeMonitoring ? "종료하기" : "실시간 감지 시작"}
-        </button>
-        <button
-          className="respondy-primary-btn respondy-secondary-btn mt-2 sm:mt-3"
-          type="button"
-          onClick={() => void pickRealtimeRegion()}
-          disabled={isPickingRegion}
-        >
-          {isPickingRegion ? "영역 선택 중..." : "화면에서 OCR 영역 선택"}
-        </button>
+        <div className="respondy-realtime-action-stack">
+          <button
+            className="respondy-primary-btn respondy-secondary-btn"
+            type="button"
+            onClick={() => void pickRealtimeRegion()}
+            disabled={isPickingRegion}
+          >
+            {isPickingRegion ? "영역 선택 중..." : "캡처 영역 선택"}
+          </button>
+          <button
+            className={`respondy-primary-btn ${isRealtimeMonitoring ? "respondy-danger-btn" : ""}`}
+            type="button"
+            onClick={() => void handleRealtimeMonitoringToggle()}
+          >
+            {isRealtimeMonitoring ? "종료하기" : "실시간 감지 시작"}
+          </button>
+        </div>
       </article>
 
       <article className="respondy-card">
@@ -1375,25 +1418,7 @@ export default function HomePage() {
                 });
                 setManualResult(result);
                 setShowManualResults(true);
-                const id = `mn-${Date.now()}`;
-                setAnalysisHistory((h) => [
-                  {
-                    id,
-                    at: Date.now(),
-                    source: "manual",
-                    title: `${selectedManualPerson.trim()}와의 수동 입력 대화`,
-                    relation:
-                      selectedManualProfile?.currentRelation?.trim() || "—",
-                    goalRelation:
-                      selectedManualProfile?.goalRelation?.trim() || "—",
-                    situation: manualSituation.trim(),
-                    receivedMessage: manualReceivedMessage.trim(),
-                    emotion: result.emotion,
-                    context: result.context,
-                    suggestions: [...result.suggestions],
-                  },
-                  ...h,
-                ]);
+                await loadAnalysisHistory();
               } catch (e) {
                 const message =
                   e instanceof Error
@@ -1661,7 +1686,7 @@ export default function HomePage() {
           </div>
         </div>
         <dl className="respondy-profile-meta">
-          <dt>이름</dt>
+          <dt>아이디</dt>
           <dd>{userName || "—"}</dd>
           <dt>이메일</dt>
           <dd>{profileEmail || "—"}</dd>
@@ -2093,16 +2118,19 @@ export default function HomePage() {
             <div className="respondy-modal-body">
               <div className="respondy-person-form-grid">
                 <label className="respondy-label" htmlFor="profile-name">
-                  이름
+                  아이디
                 </label>
                 <input
                   id="profile-name"
                   className="respondy-input"
                   value={editProfileName}
-                  onChange={(e) => setEditProfileName(e.target.value)}
-                  placeholder="이름을 입력하세요"
+                  readOnly
+                  disabled
                   autoComplete="name"
                 />
+                <p className="respondy-helper-text respondy-helper-text--inline">
+                  아이디는 변경할 수 없습니다.
+                </p>
                 <label className="respondy-label" htmlFor="profile-email">
                   이메일
                 </label>
@@ -2424,9 +2452,9 @@ export default function HomePage() {
                   type="button"
                   className="respondy-primary-btn respondy-modal-primary-btn"
                   onClick={() => void createPersonProfile()}
-                  disabled={!newPersonName.trim()}
+                  disabled={!newPersonName.trim() || isCreatingPerson}
                 >
-                  인물 생성
+                  {isCreatingPerson ? "생성 중..." : "인물 생성"}
                 </button>
               </div>
             </div>
