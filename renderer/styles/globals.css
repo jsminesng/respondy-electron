@@ -523,7 +523,7 @@
   }
 
   .respondy-history-item-title {
-    @apply block whitespace-normal text-base font-bold leading-snug text-white sm:text-lg;
+    @apply block overflow-hidden whitespace-nowrap text-base font-bold leading-snug text-white sm:text-lg;
   }
 
   .respondy-profile-head {

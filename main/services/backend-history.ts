@@ -140,8 +140,8 @@ function toSummaryKeyword(value: unknown): string {
   if (!text) return ''
 
   const firstChunk = text.split(/[.,:;()\[\]\n]/)[0]?.trim() || text
-  if (firstChunk.length <= 16) return firstChunk
-  return `${firstChunk.slice(0, 16).trim()}...`
+  const compact = firstChunk.replace(/\s+/g, ' ').trim()
+  return compact.slice(0, 12).trim()
 }
 
 function buildHistoryTitle(session: SessionShape, source: 'realtime' | 'manual'): string {
@@ -149,11 +149,11 @@ function buildHistoryTitle(session: SessionShape, source: 'realtime' | 'manual')
     toStringValue(session.avatar_name) || toStringValue(session.avatar?.name) || '상대'
   const keyword = toSummaryKeyword(session.latest_summary) || toSummaryKeyword(session.latest_analysis?.summary)
   if (keyword) {
-    return `${personName} · ${keyword}`
+    return `${personName} · ${keyword.slice(0, 10).trim()}`
   }
 
   const rawTitle = toStringValue(session.title)
-  if (rawTitle) return rawTitle
+  if (rawTitle) return rawTitle.slice(0, 14).trim()
   return `${personName} ${source === 'manual' ? '수동' : '실시간'} 분석`
 }
 
