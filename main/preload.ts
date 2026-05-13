@@ -4,6 +4,7 @@ import type {
   AvatarUpdateInput,
   DisplayBounds,
   ManualAnalysisInput,
+  PasswordChangeInput,
   NotificationPayload,
   OcrRegion,
   OcrSettings,
@@ -92,6 +93,9 @@ const respondy: RespondyApi = {
   },
   updateUserProfile(payload: UserProfileUpdateInput) {
     return ipcRenderer.invoke("profile:update", payload);
+  },
+  changePassword(payload: PasswordChangeInput) {
+    return ipcRenderer.invoke("password:change", payload);
   },
 };
 

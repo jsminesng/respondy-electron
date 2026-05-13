@@ -147,6 +147,12 @@ export type UserProfileUpdateInput = {
   birthDate: string;
 };
 
+export type PasswordChangeInput = {
+  currentPassword: string;
+  newPassword: string;
+  confirmPassword: string;
+};
+
 export type RespondyApi = {
   onNotification: (
     callback: (payload: NotificationPayload) => void,
@@ -183,4 +189,5 @@ export type RespondyApi = {
   ) => Promise<ManualAnalysisResult>;
   getUserProfile: () => Promise<UserProfile>;
   updateUserProfile: (payload: UserProfileUpdateInput) => Promise<UserProfile>;
+  changePassword: (payload: PasswordChangeInput) => Promise<void>;
 };

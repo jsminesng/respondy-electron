@@ -101,7 +101,6 @@ export default function HomePage() {
   const [loggedIn, setLoggedIn] = useState(false);
   const [userName, setUserName] = useState("ABC");
   const [profileEmail, setProfileEmail] = useState("abc@kookmin.ac.kr");
-  const [profilePassword, setProfilePassword] = useState("abc123!");
   const [profileBirthDate, setProfileBirthDate] = useState("2001-01-01");
   const [showProfileEditModal, setShowProfileEditModal] = useState(false);
   const [showPasswordChangeModal, setShowPasswordChangeModal] = useState(false);
@@ -420,7 +419,6 @@ export default function HomePage() {
       applyAuthState(state);
       resetSessionUi();
       await loadPersonProfiles();
-      setProfilePassword(password);
       form.reset();
     } catch (e) {
       const message = e instanceof Error ? e.message : "로그인에 실패했습니다.";
@@ -495,7 +493,6 @@ export default function HomePage() {
       applyAuthState(state);
       resetSessionUi();
       await loadPersonProfiles();
-      setProfilePassword(password);
       setProfileBirthDate(birthDate);
       form.reset();
     } catch (e) {
@@ -880,29 +877,42 @@ export default function HomePage() {
     }
   };
 
-  const saveChangedPassword = () => {
+  const saveChangedPassword = async () => {
+    const respondy = getRespondy();
+    if (!respondy) return;
     if (!currentPasswordInput || !newPasswordInput || !confirmPasswordInput)
       return;
-    if (currentPasswordInput !== profilePassword) {
-      setPasswordChangeError("현재 비밀번호가 올바르지 않습니다.");
-      return;
-    }
     if (newPasswordInput !== confirmPasswordInput) {
       setPasswordChangeError(
         "새 비밀번호와 확인 비밀번호가 일치하지 않습니다.",
       );
       return;
     }
-    if (newPasswordInput === profilePassword) {
+    if (newPasswordInput === currentPasswordInput) {
       setPasswordChangeError(
         "새 비밀번호는 현재 비밀번호와 다르게 입력해 주세요.",
       );
       return;
     }
-
-    setProfilePassword(newPasswordInput);
-    closePasswordChangeModal();
-    window.alert("비밀번호가 변경되었습니다.");
+    try {
+      setAuthBusy(true);
+      setPasswordChangeError("");
+      await respondy.changePassword({
+        currentPassword: currentPasswordInput,
+        newPassword: newPasswordInput,
+        confirmPassword: confirmPasswordInput,
+      });
+      closePasswordChangeModal();
+      window.alert("비밀번호가 변경되었습니다.");
+    } catch (e) {
+      setPasswordChangeError(
+        e instanceof Error
+          ? e.message
+          : "비밀번호 변경 중 오류가 발생했습니다.",
+      );
+    } finally {
+      setAuthBusy(false);
+    }
   };
 
   const createPersonProfile = async () => {
@@ -2067,7 +2077,7 @@ export default function HomePage() {
                 <button
                   type="button"
                   className="respondy-primary-btn respondy-modal-primary-btn"
-                  onClick={saveChangedPassword}
+                  onClick={() => void saveChangedPassword()}
                   disabled={
                     !currentPasswordInput ||
                     !newPasswordInput ||

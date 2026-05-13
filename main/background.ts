@@ -10,6 +10,7 @@ import {
 import type {
   LoginInput,
   ManualAnalysisInput,
+  PasswordChangeInput,
   NotificationPayload,
   OcrRegion,
   OcrSettings,
@@ -34,6 +35,7 @@ import {
 import { listAnalysisHistory } from './services/backend-history'
 import { analyzeManualConversation } from './services/backend-manual'
 import { getUserProfile, updateUserProfile } from './services/backend-profile'
+import { changePassword } from './services/backend-password'
 
 const isProd = process.env.NODE_ENV === 'production'
 const DEBUG_OCR_LOG = process.env.DEBUG_OCR_LOG === 'true'
@@ -329,6 +331,9 @@ function completeRegionPicker(region: OcrRegion | null) {
   )
   ipcMain.handle('profile:get', () => getUserProfile())
   ipcMain.handle('profile:update', (_evt, payload) => updateUserProfile(payload))
+  ipcMain.handle('password:change', (_evt, payload: PasswordChangeInput) =>
+    changePassword(payload),
+  )
 
   if (isProd) {
     await mainWindow.loadURL('app://./')
