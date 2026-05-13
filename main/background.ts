@@ -115,6 +115,12 @@ function restartOcrLoop() {
       })
     },
     (err) => {
+      if (/session is already ended/i.test(err.message)) {
+        if (DEBUG_OCR_LOG) {
+          console.log('[Respondy][OCR] ignore ended-session capture race')
+        }
+        return
+      }
       console.error('[Respondy] OCR:', err.message)
     },
   )
@@ -289,6 +295,11 @@ function completeRegionPicker(region: OcrRegion | null) {
     isRealtimeDetectionTransitioning = true
     try {
       const sessionId = activeRealtimeSessionId
+      isRealtimeDetectionActive = false
+      activeRealtimeSessionId = null
+      ocrLoopHandle?.stop()
+      ocrLoopHandle = null
+
       if (sessionId) {
         try {
           await endRealtimeSession(sessionId)
@@ -306,10 +317,6 @@ function completeRegionPicker(region: OcrRegion | null) {
           sessionId,
         })
       }
-      isRealtimeDetectionActive = false
-      activeRealtimeSessionId = null
-      ocrLoopHandle?.stop()
-      ocrLoopHandle = null
     } finally {
       isRealtimeDetectionTransitioning = false
     }
