@@ -104,7 +104,11 @@ export async function analyzeManualConversation(
     auth: true,
     body: {
       avatar_id: avatarId,
+      title: '수동 입력 대화 분석',
+      platform_type: 'kakao',
+      goal_type: 'general',
       situation_context: situationContext,
+      analysis_goal: '부담스럽지 않게 대화를 이어가기',
       received_message: receivedMessage,
     },
   })

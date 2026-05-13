@@ -2,7 +2,7 @@ import type { PasswordChangeInput } from '../../shared/respondy-types'
 import { requestJson } from './backend-client'
 
 function getPasswordChangeEndpoint(): string {
-  return process.env.PASSWORD_CHANGE_ENDPOINT?.trim() || '/auth/password/change/'
+  return process.env.PASSWORD_CHANGE_ENDPOINT?.trim() || '/auth/password/'
 }
 
 export async function changePassword(payload: PasswordChangeInput): Promise<void> {
@@ -26,7 +26,7 @@ export async function changePassword(payload: PasswordChangeInput): Promise<void
     body: {
       current_password: currentPassword,
       new_password: newPassword,
-      confirm_password: confirmPassword,
+      new_password_confirm: confirmPassword,
     },
   })
 }
