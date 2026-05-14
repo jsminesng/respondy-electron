@@ -125,6 +125,15 @@ export type AnalysisHistoryRecord = {
   emotion: string;
   context: string;
   suggestions: string[];
+  analysisSections?: AnalysisHistorySection[];
+};
+
+export type AnalysisHistorySection = {
+  id: string;
+  at: number;
+  emotion: string;
+  context: string;
+  suggestions: string[];
 };
 
 export type ManualAnalysisInput = {

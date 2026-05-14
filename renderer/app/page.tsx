@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { getRespondy } from "../lib/respondy-client";
 import type {
+  AnalysisHistorySection,
   AuthState,
   AvatarProfile as BackendAvatarProfile,
   NotificationPayload,
@@ -40,6 +41,7 @@ type AnalysisRecord = {
   emotion: string;
   context: string;
   suggestions: string[];
+  analysisSections?: AnalysisHistorySection[];
 };
 
 const navItems: { key: AppView; label: string }[] = [
@@ -2000,6 +2002,19 @@ export default function HomePage() {
       !historyDetail.goalRelation.trim())
       ? historyPersonFromTitle?.goalRelation || "—"
       : historyDetail?.goalRelation || "—";
+  const historyAnalysisSections: AnalysisHistorySection[] = historyDetail
+    ? historyDetail.analysisSections?.length
+      ? historyDetail.analysisSections
+      : [
+          {
+            id: `${historyDetail.id}-summary`,
+            at: historyDetail.at,
+            emotion: historyDetail.emotion,
+            context: historyDetail.context,
+            suggestions: historyDetail.suggestions,
+          },
+        ]
+    : [];
   const personDetail = personDetailId
     ? personProfiles.find((person) => person.id === personDetailId)
     : undefined;
@@ -2782,46 +2797,66 @@ export default function HomePage() {
                   )}
                 </dl>
               </section>
-              <section className="respondy-modal-section respondy-modal-panel">
-                <h3 className="respondy-modal-section-title">AI 분석 결과</h3>
-                <p className="respondy-modal-label">감정 분석</p>
-                <div className="respondy-modal-textbox">
-                  {historyDetail.emotion}
-                </div>
-                <p className="respondy-modal-label">맥락 해석</p>
-                <div className="respondy-modal-textbox">
-                  {historyDetail.context}
-                </div>
-              </section>
-              <section className="respondy-modal-section respondy-modal-panel">
-                <h3 className="respondy-modal-section-title">추천 답장</h3>
-                <ul className="respondy-modal-suggestions">
-                  {historyDetail.suggestions.map((s, i) => {
-                    const copyId = `history-${historyDetail.id}-${i}`;
-                    return (
-                      <li
-                        key={`${historyDetail.id}-s-${i}`}
-                        className="respondy-modal-suggestion"
-                      >
-                        <span className="respondy-modal-suggestion-index">
-                          {i + 1}
+              <section className="respondy-modal-section">
+                <h3 className="respondy-modal-section-title respondy-history-session-title">
+                  세션별 AI 분석
+                </h3>
+                <div className="respondy-history-session-list">
+                  {historyAnalysisSections.map((section, sectionIndex) => (
+                    <article
+                      key={section.id}
+                      className="respondy-history-session-card"
+                    >
+                      <div className="respondy-history-session-card-head">
+                        <span className="respondy-history-session-card-title">
+                          분석 {sectionIndex + 1}
                         </span>
-                        <span className="respondy-modal-suggestion-text">
-                          {s}
+                        <span className="respondy-history-session-card-time">
+                          {new Date(section.at).toLocaleTimeString("ko-KR", {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })}
                         </span>
-                        <button
-                          type="button"
-                          className="respondy-modal-copy-btn"
-                          onClick={() => void copySuggestion(s, copyId)}
-                        >
-                          {copiedSuggestionId === copyId
-                            ? "복사됨"
-                            : "복사하기"}
-                        </button>
-                      </li>
-                    );
-                  })}
-                </ul>
+                      </div>
+                      <p className="respondy-modal-label">감정 분석</p>
+                      <div className="respondy-modal-textbox">
+                        {section.emotion}
+                      </div>
+                      <p className="respondy-modal-label">맥락 해석</p>
+                      <div className="respondy-modal-textbox">
+                        {section.context}
+                      </div>
+                      <p className="respondy-modal-label">추천 답장</p>
+                      <ul className="respondy-modal-suggestions">
+                        {section.suggestions.map((s, i) => {
+                          const copyId = `history-${historyDetail.id}-${section.id}-${i}`;
+                          return (
+                            <li
+                              key={`${section.id}-s-${i}`}
+                              className="respondy-modal-suggestion"
+                            >
+                              <span className="respondy-modal-suggestion-index">
+                                {i + 1}
+                              </span>
+                              <span className="respondy-modal-suggestion-text">
+                                {s}
+                              </span>
+                              <button
+                                type="button"
+                                className="respondy-modal-copy-btn"
+                                onClick={() => void copySuggestion(s, copyId)}
+                              >
+                                {copiedSuggestionId === copyId
+                                  ? "복사됨"
+                                  : "복사하기"}
+                              </button>
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    </article>
+                  ))}
+                </div>
               </section>
             </div>
           </div>

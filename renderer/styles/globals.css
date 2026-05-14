@@ -721,6 +721,30 @@
     @apply mb-4 rounded-lg border border-white/[0.06] bg-black/30 px-4 py-3.5 text-sm leading-relaxed text-white/90 last:mb-0;
   }
 
+  .respondy-history-session-title {
+    @apply mb-0 border-b-0 pb-0;
+  }
+
+  .respondy-history-session-list {
+    @apply mt-6 border-t border-white/[0.06] pt-6 space-y-4;
+  }
+
+  .respondy-history-session-card {
+    @apply rounded-2xl border border-white/[0.08] bg-white/[0.04] p-4 shadow-[0_18px_50px_rgba(0,0,0,0.22)] sm:p-5;
+  }
+
+  .respondy-history-session-card-head {
+    @apply mb-4 flex items-center justify-between gap-3 border-b border-white/[0.06] pb-3;
+  }
+
+  .respondy-history-session-card-title {
+    @apply text-sm font-bold text-white;
+  }
+
+  .respondy-history-session-card-time {
+    @apply shrink-0 text-xs font-medium text-white/45;
+  }
+
   .respondy-modal-suggestions {
     @apply m-0 list-none space-y-3 p-0;
   }
