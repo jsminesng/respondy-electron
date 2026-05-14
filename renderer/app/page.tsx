@@ -499,16 +499,27 @@ export default function HomePage() {
       await loadPersonProfiles();
       form.reset();
     } catch (e) {
-      const message = e instanceof Error ? e.message : "로그인에 실패했습니다.";
-      if (
-        username.includes("@") &&
-        /invalid username or password/i.test(message)
-      ) {
+      const raw =
+        e instanceof Error ? e.message : "로그인에 실패했습니다.";
+      const invalidCreds = /invalid username or password/i.test(raw);
+      if (invalidCreds && username.includes("@")) {
         setAuthError(
-          "현재 서버는 이메일 로그인 대신 아이디 로그인을 사용합니다. 회원가입 때 입력한 이름(아이디)으로 로그인해 주세요.",
+          "이메일이 아니라 회원가입 때 쓴 아이디로 로그인해 주세요. 아이디와 비밀번호가 맞지 않으면 같은 오류가 납니다.",
+        );
+      } else if (invalidCreds) {
+        setAuthError(
+          "입력하신 아이디와 비밀번호가 일치하지 않습니다. 다시 확인해 주세요.",
         );
       } else {
-        setAuthError(message);
+        const stripped = raw.replace(
+          /^Error invoking remote method '[^']+':\s*/i,
+          "",
+        );
+        const withoutErrorType = stripped.replace(
+          /^BackendApiError:\s*/i,
+          "",
+        );
+        setAuthError(withoutErrorType.trim() || raw);
       }
     } finally {
       setAuthBusy(false);
@@ -1879,6 +1890,16 @@ export default function HomePage() {
                   {person.goalRelation || "목표 미입력"}
                 </span>
                 <div className="respondy-history-item-actions">
+                  <button
+                    type="button"
+                    className="respondy-item-edit-btn"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      openPersonDetailModal(person);
+                    }}
+                  >
+                    수정
+                  </button>
                   <button
                     type="button"
                     className="respondy-item-delete-btn"

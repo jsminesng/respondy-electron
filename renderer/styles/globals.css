@@ -503,7 +503,11 @@
   }
 
   .respondy-history-item-actions {
-    @apply mt-4 flex justify-end;
+    @apply mt-4 flex flex-wrap justify-end gap-2;
+  }
+
+  .respondy-item-edit-btn {
+    @apply h-8 rounded-full border border-[#7b61ff]/50 bg-[#7b61ff]/35 px-3.5 text-xs font-bold text-[#f0eaff] shadow-sm transition-colors hover:bg-[#7b61ff]/55;
   }
 
   .respondy-item-delete-btn {
