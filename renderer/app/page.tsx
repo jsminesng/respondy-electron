@@ -2818,7 +2818,7 @@ export default function HomePage() {
                   )}
                 </dl>
               </section>
-              <section className="respondy-modal-section">
+              <section className="respondy-modal-section respondy-history-session-section">
                 <h3 className="respondy-modal-section-title respondy-history-session-title">
                   세션별 AI 분석
                 </h3>
