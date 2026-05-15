@@ -57,6 +57,8 @@ import { changePassword } from './services/backend-password'
 const isProd = process.env.NODE_ENV === 'production'
 const DEBUG_OCR_LOG = process.env.DEBUG_OCR_LOG === 'true'
 
+app.setName('Respondy')
+
 const envDir = path.join(__dirname, '..')
 dotenv.config({ path: path.join(envDir, '.env') })
 dotenv.config({ path: path.join(envDir, '.env.local') })
