@@ -317,10 +317,6 @@
     @apply mt-3 grid gap-1.5 sm:mt-4 sm:gap-2;
   }
 
-  .respondy-capture-hint {
-    @apply mt-3 leading-relaxed sm:mt-3.5;
-  }
-
   .respondy-realtime-action-stack .respondy-primary-btn {
     @apply mt-0;
   }

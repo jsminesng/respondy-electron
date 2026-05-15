@@ -1346,7 +1346,6 @@ export default function HomePage() {
             type="button"
             onClick={() => void pickRealtimeRegion()}
             disabled={isPickingRegion}
-            title="모니터 전체를 덮는 선택 화면이 열립니다. 드래그로 영역을 지정하세요."
           >
             {isPickingRegion ? "영역 선택 중..." : "캡처 영역 선택"}
           </button>
@@ -1358,14 +1357,6 @@ export default function HomePage() {
             {isRealtimeMonitoring ? "종료하기" : "실시간 감지 시작"}
           </button>
         </div>
-        <p className="respondy-helper-text respondy-helper-text--inline respondy-capture-hint">
-          채팅 창 등 앱 밖 화면까지 지정하려면, 버튼을 누르면{" "}
-          <span className="font-semibold text-white/90">
-            잠깐 모니터 전체를 덮는 반투명 선택 레이어
-          </span>
-          가 열립니다. 마우스로 드래그해 영역을 잡고, 취소는{" "}
-          <span className="font-semibold text-white/90">ESC</span>입니다.
-        </p>
       </article>
 
       <article className="respondy-card">
