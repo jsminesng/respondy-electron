@@ -221,7 +221,8 @@ export default function HomePage() {
       const context = payload.strategy?.trim() || payload.tone?.trim() || "";
       const suggestions =
         payload.recommendedReplies?.filter((item) => item.trim()) ?? [];
-      if (!emotion && !context && suggestions.length === 0) {
+      const hasMessage = Boolean(payload.message?.trim());
+      if (!emotion && !context && suggestions.length === 0 && !hasMessage) {
         return;
       }
 

@@ -132,6 +132,7 @@ function restartOcrLoop() {
       }
       console.error('[Respondy] OCR:', err.message)
     },
+    { bootstrapCapture: true },
   )
 }
 
