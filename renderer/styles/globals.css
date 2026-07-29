@@ -70,17 +70,6 @@
     font-weight: 400;
   }
 
-  /* 영역 선택 전용 창: 투명 Electron 창 — body·루트 래퍼 배경 제거 */
-  html.respondy-region-picker-active,
-  html.respondy-region-picker-active body {
-    background-color: transparent !important;
-    background-image: none !important;
-  }
-
-  html.respondy-region-picker-active body > * {
-    background-color: transparent !important;
-    background-image: none !important;
-  }
 }
 
 @layer components {
