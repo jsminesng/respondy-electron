@@ -60,19 +60,26 @@ Instead of auto-sending messages, it acts as a communication coach: it analyzes 
 
 ## 🏗 Architecture
 
-![RESPONDY Architecture](./architecture.png)
+![RESPONDY Architecture](./assets/screenshots/architecture.png)
 
 ---
 
 ## 📸 Screenshots
 
-> Add screenshots here.
+### Home
+![Home](./assets/screenshots/home.png)
 
-- Home
-- Real-time Analysis
-- Manual Input
-- AI Chat
-- My Page
+### Real-time Analysis
+![Real-time Analysis](./assets/screenshots/realtime-analysis.png)
+
+### Manual Input
+![Manual Input](./assets/screenshots/manual-input.png)
+
+### AI Chat
+![AI Chat](./assets/screenshots/ai-chat.png)
+
+### My Page
+![My Page](./assets/screenshots/mypage.png)
 
 ---
 
