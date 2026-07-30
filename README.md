@@ -1,42 +1,39 @@
 # RESPONDY
 
-An AI-powered communication coaching desktop app that analyzes messenger conversations and suggests context-aware replies.
+An AI-powered desktop chat assistant that provides real-time, context-aware reply suggestions from chat screenshots.
 
 
 ---
 
-## 🚀 About
+## Overview
 
-Text-based communication is now a daily default on platforms like KakaoTalk, Instagram DM, and SMS.  
-However, text alone often loses tone, intention, and emotional nuance, which can increase stress in sensitive conversations.
+Respondy is an AI-powered desktop chat assistant that helps users write better replies from chat screenshots.  
+Users can upload screenshots, receive AI-generated response suggestions, and review conversation history in a single desktop application.
 
-RESPONDY was built to reduce that burden.  
-Instead of auto-sending messages, it acts as a communication coach: it analyzes conversation context and emotional signals, then recommends natural, practical replies that fit the situation.
-
----
-
-## ✨ Features
-
-- **Real-time Conversation Analysis**
-  - Detects new messages from a selected screen region using OCR
-  - Analyzes emotional flow and conversational intent
-  - Recommends multiple reply drafts
-
-- **Manual Input Analysis**
-  - Lets users enter custom situations and messages directly
-  - Runs the same analysis pipeline without requiring a live messenger screen
-
-- **AI Chat Practice**
-  - Simulates conversation with persona-based tone and style
-  - Helps users rehearse responses before real conversations
-
-- **My Page**
-  - Manages analysis history and persona profiles
-  - Supports profile-based personalized coaching
+The application streamlines everyday messaging by combining real-time screenshot analysis with Gemini-powered response generation in an Electron desktop environment.
 
 ---
 
-## 🛠 Tech Stack
+## Workflow
+
+1. Users upload a chat screenshot through the desktop application.
+2. The frontend sends the image to backend services via REST APIs.
+3. The backend analyzes the screenshot and generates reply suggestions using Gemini.
+4. Suggested replies and conversation history are displayed in the desktop application.
+
+---
+
+## Features
+
+- Real-time screenshot analysis
+- Real-time AI reply suggestions
+- Conversation history
+- Desktop application built with Electron
+- REST API integration
+
+---
+
+## Tech Stack
 
 - **Frontend**
   - Electron
@@ -58,13 +55,25 @@ Instead of auto-sending messages, it acts as a communication coach: it analyzes 
 
 ---
 
-## 🏗 Architecture
+## Architecture
 
 ![RESPONDY Architecture](./assets/screenshots/architecture.png)
 
 ---
 
-## 📸 Screenshots
+## System Flow
+
+![RESPONDY System Flow](./assets/screenshots/system_flow.png)
+
+---
+
+## ERD
+
+![RESPONDY ERD](./assets/screenshots/erd.png)
+
+---
+
+## Screenshots
 
 ### Home
 ![Home](./assets/screenshots/home.png)
@@ -83,7 +92,7 @@ Instead of auto-sending messages, it acts as a communication coach: it analyzes 
 
 ---
 
-## 📂 Folder Structure
+## Folder Structure
 
 ```txt
 main/                     # Electron main process
@@ -104,7 +113,7 @@ resources/                # App icons and build assets
 
 ---
 
-## ⚙️ Installation
+## Installation
 
 ### Requirements
 
@@ -135,16 +144,24 @@ Build outputs are generated in `dist/`.
 
 ---
 
-## 💡 Challenges
+## Challenges
 
-- Building stable OCR-based real-time detection in real messenger environments
-- Reducing duplicate analysis/API calls while keeping response latency low
-- Translating raw conversation data into practical, human-sounding reply coaching
-- Handling UX edge cases in region selection, session state, and error recovery
+- Delivering AI-generated reply suggestions with minimal delay after screenshot upload
+- Integrating Electron and REST APIs while keeping a smooth desktop user experience
+- Managing asynchronous image upload, analysis, and response updates efficiently
 
 ---
 
-## 📈 Improvements
+## What We Learned
+
+- How to build and operate an Electron desktop application with Next.js and React
+- Practical experience integrating real-time REST API workflows into desktop UI
+- Stronger understanding of asynchronous state management and API-driven rendering
+- Better understanding of how frontend clients coordinate with AI-powered backend services
+
+---
+
+## Improvements
 
 - Better multi-platform messenger support (beyond current primary flow)
 - Stronger persona memory for long-term conversation continuity
